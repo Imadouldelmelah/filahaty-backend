@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from utils.logger import logger
 
 # Import routes
-from routes import prediction, chat
+from routes import prediction, ai_routes
 
 # Load environment variables
 load_dotenv()
@@ -28,7 +28,7 @@ app.add_middleware(
 
 # Include Routers
 app.include_router(prediction.router)
-app.include_router(chat.router)
+app.include_router(ai_routes.router)
 
 @app.on_event("startup")
 async def startup_event():
