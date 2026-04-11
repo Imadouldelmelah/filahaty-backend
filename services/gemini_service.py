@@ -13,14 +13,23 @@ class GeminiService:
         )
 
     async def generate_response(self, message: str):
-        # Using the exact structure and model requested
-        # Note: Using .aio with await for proper async execution in FastAPI
-        response = await self.client.aio.models.generate_content(
-            model="gemini-1.5-flash",
-            contents=[{
-                "role": "user",
-                "parts": [{"text": message}]
-            }]
-        )
+        # Logging before the request
+        print("Sending prompt to Gemini:", message)
+        
+        try:
+            # Using the exact structure and model requested
+            # Note: Using .aio with await for proper async execution in FastAPI
+            response = await self.client.aio.models.generate_content(
+                model="gemini-1.5-flash",
+                contents=[{
+                    "role": "user",
+                    "parts": [{"text": message}]
+                }]
+            )
+            return response.text
 
-        return response.text
+        except Exception as e:
+            # Logging for errors to Render logs
+            print("Gemini API error:", str(e))
+            # Return a safe fallback to the user
+            return "AI assistant temporarily unavailable"
