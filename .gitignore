@@ -1,0 +1,18 @@
+# Environment variables
+.env
+.env local
+
+# Virtual environments
+venv/
+ENV/
+env/
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Logs
+backend.log
+*.log
