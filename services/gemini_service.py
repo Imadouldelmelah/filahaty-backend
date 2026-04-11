@@ -14,28 +14,30 @@ class GeminiService:
         self.client = genai.Client(
             api_key=api_key
         )
-        print("Gemini 1.5 Flash client initialized")
+        print("Gemini 1.5 Flash client initialized with explicit content format")
 
-    async def generate_response(self, message):
-        # Logging before the request as requested
-        print("Sending prompt to Gemini:", message)
+    async def generate_response(self, message: str):
+        print("Sending prompt to Gemini (Strict Format):", message)
         
         try:
-            # Using the official format for content generation
+            # Using the explicit request format requested by the user
             # Note: Using .aio for non-blocking FastAPI performance
             response = await asyncio.wait_for(
                 self.client.aio.models.generate_content(
                     model="gemini-1.5-flash",
-                    contents=message
+                    contents=[{
+                        "role": "user",
+                        "parts": [{"text": message}]
+                    }]
                 ),
                 timeout=15.0
             )
             
+            print("Gemini response received")
             ai_text = response.text.strip()
             return ai_text
 
         except Exception as e:
-            # Logging for errors as requested
-            print("Gemini error:", e)
+            print("Gemini API error:", str(e))
             logger.error(f"Gemini API Exception: {str(e)}", exc_info=True)
             return "AI assistant temporarily unavailable"

@@ -6,7 +6,7 @@ async def test_ai():
     print("Testing GeminiService locally...")
     try:
         service = GeminiService()
-        response = await service.ask_ai("Hello, tell me one tip for tomato farming.")
+        response = await service.generate_response("Hello, tell me one tip for tomato farming.")
         print("\nLOCAL AI RESPONSE SUCCESSFUL:")
         print(response)
     except Exception as e:

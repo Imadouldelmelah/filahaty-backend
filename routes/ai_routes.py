@@ -42,4 +42,5 @@ async def chat_with_ai(request: ChatRequest):
         # Proper error handling and logging
         logger.error(f"AI Routes Error: {str(e)}", exc_info=True)
         print("AI assistant route error:", e)
-        raise HTTPException(status_code=500, detail=f"AI assistant error: {str(e)}")
+        # Return fallback message as a valid response format as requested
+        return ChatResponse(response="AI assistant temporarily unavailable")
