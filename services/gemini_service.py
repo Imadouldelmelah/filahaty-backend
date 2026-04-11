@@ -1,8 +1,7 @@
 import os
 import asyncio
 from dotenv import load_dotenv
-import google.generativeai as genai
-from utils.prompt_builder import build_system_prompt
+from google import genai
 from utils.logger import logger
 
 # Explicitly load environment variables for this service
@@ -11,7 +10,7 @@ load_dotenv()
 class GeminiService:
     def __init__(self):
         # AI requests usually take some time, we set a reasonable timeout
-        self.request_timeout = 12.0 # seconds
+        self.request_timeout = 15.0 # seconds
         
         api_key = os.getenv("GEMINI_API_KEY")
         
@@ -25,16 +24,14 @@ class GeminiService:
             logger.error("GEMINI_API_KEY initialization failed: Key not found")
             raise ValueError("GEMINI_API_KEY not found in environment")
             
-        # Configure Gemini
-        genai.configure(api_key=api_key)
+        # Initialize the official Google GenAI Client
+        self.client = genai.Client(api_key=api_key)
         
-        # Initialize the model (called once during service instantiation)
-        self.model = genai.GenerativeModel("gemma-3-1b-it")
         print("Gemma 3 1B model initialized successfully")
         logger.info("GeminiService initialized successfully (Model: gemma-3-1b-it)")
 
     async def ask_ai(self, message: str) -> str:
-        print("AI INPUT:", message)
+        print("User question:", message)
         
         system_prompt = """
 You are Filahaty AI, a smart agricultural assistant helping farmers.
@@ -52,9 +49,12 @@ You provide advice about:
         
         print("Sending request to Gemini...")
         try:
-            # Use asyncio.wait_for to protect against hanging API calls
+            # Use the official async client via client.aio
             response = await asyncio.wait_for(
-                self.model.generate_content_async(full_prompt),
+                self.client.aio.models.generate_content(
+                    model="gemma-3-1b-it",
+                    contents=full_prompt
+                ),
                 timeout=self.request_timeout
             )
             
@@ -69,6 +69,7 @@ You provide advice about:
             return "AI assistant temporarily unavailable"
             
         except Exception as e:
+            # Explicitly log the full error for debugging as requested
             print("Gemini error:", e)
             logger.error(f"AI Request Failed: {str(e)}", exc_info=True)
-            return "AI assistant temporarily unavailable"
+            return f"AI assistant temporarily unavailable. Error detail: {str(e)[:50]}..."

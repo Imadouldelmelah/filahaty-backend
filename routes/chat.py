@@ -27,11 +27,17 @@ async def chat_with_ai(request: ChatRequest):
     if not request.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty")
     
-    # Call the ask_ai function
-    response_text = await gemini_service.ask_ai(request.message)
-    
-    duration = time.time() - start_time
-    logger.info(f"Chat Request Handled: status=200, duration={duration:.2f}s")
-    
-    # Return JSON response: {"response": ai_response}
-    return ChatResponse(response=response_text)
+    try:
+        # Call the ask_ai function
+        response_text = await gemini_service.ask_ai(request.message)
+        
+        duration = time.time() - start_time
+        logger.info(f"Chat Request Handled: status=200, duration={duration:.2f}s")
+        
+        # Return JSON response: {"response": ai_response}
+        return ChatResponse(response=response_text)
+        
+    except Exception as e:
+        logger.error(f"Endpoint Error: {str(e)}", exc_info=True)
+        print("AI Assistant Endpoint Error:", e)
+        raise HTTPException(status_code=500, detail=f"AI Assistant Error: {str(e)}")
