@@ -8,8 +8,15 @@ load_dotenv()
 class GeminiService:
 
     def __init__(self):
+        # Verify the API key status as requested
+        api_key = os.getenv("GEMINI_API_KEY")
+        print("Gemini API key loaded:", api_key is not None)
+        
+        if not api_key:
+            print("Gemini API ERROR: GEMINI_API_KEY is missing from environment variables")
+            
         self.client = genai.Client(
-            api_key=os.getenv("GEMINI_API_KEY")
+            api_key=api_key
         )
 
     async def generate_response(self, message: str):
@@ -26,10 +33,13 @@ class GeminiService:
                     "parts": [{"text": message}]
                 }]
             )
-            return response.text
+            if hasattr(response, "text") and response.text:
+                return response.text
+            else:
+                return str(response)
 
         except Exception as e:
-            # Logging for errors to Render logs
-            print("Gemini API error:", str(e))
-            # Return a safe fallback to the user
-            return "AI assistant temporarily unavailable"
+            # Detailed logging for Render logs
+            print("Gemini API ERROR:", str(e))
+            # Return the real error message for debugging as requested
+            return f"Gemini error: {str(e)}"
