@@ -30,7 +30,7 @@ async def chat_with_ai(request: ChatRequest):
     try:
         # Call the GeminiService to generate the AI reply
         # Improved GeminiService now handles model fallback internally
-        response_text = await gemini_service.ask_ai(request.message)
+        response_text = await gemini_service.generate_response(request.message)
         
         duration = time.time() - start_time
         logger.info(f"Chat Request Handled: status=200, duration={duration:.2f}s")

@@ -4,72 +4,46 @@ from dotenv import load_dotenv
 from google import genai
 from utils.logger import logger
 
-# Explicitly load environment variables for this service
+# Load environment variables
 load_dotenv()
 
 class GeminiService:
     def __init__(self):
-        # AI requests usually take some time, we set a reasonable timeout
-        self.request_timeout = 15.0 # seconds
-        
-        api_key = os.getenv("GEMINI_API_KEY")
-        
-        # Debug log for API key
-        if api_key:
-            print("Loaded GEMINI_API_KEY:", api_key[:10] + "...")
-        else:
-            print("Loaded GEMINI_API_KEY: None")
-            
-        if not api_key:
-            logger.error("GEMINI_API_KEY initialization failed: Key not found")
+        self.api_key = os.getenv("GEMINI_API_KEY")
+        if not self.api_key:
+            logger.error("GEMINI_API_KEY not found in environment")
             raise ValueError("GEMINI_API_KEY not found in environment")
             
-        # Initialize the official Google GenAI Client
-        self.client = genai.Client(api_key=api_key)
-        
-        print("Gemma 3 1B model initialized successfully")
-        logger.info("GeminiService initialized successfully (Model: gemma-3-1b-it)")
+        # Initialize official Google GenAI Client
+        self.client = genai.Client(
+            api_key=self.api_key
+        )
+        print("Gemini 1.5 Flash client initialized successfully")
 
-    async def ask_ai(self, message: str) -> str:
-        print("User question:", message)
+    async def generate_response(self, message: str) -> str:
+        """
+        Generates an AI response using gemini-1.5-flash.
+        Follows the official Google GenAI SDK format.
+        """
+        print(f"Sending request to Gemini (Model: gemini-1.5-flash)... Message: {message[:50]}...")
         
-        system_prompt = """
-You are Filahaty AI, a smart agricultural assistant helping farmers.
-
-You provide advice about:
-- crops
-- irrigation
-- soil health
-- pest control
-- fertilizers
-- climate adaptation
-"""
-        full_prompt = system_prompt + "\nFarmer question:\n" + message
-        
-        print("Sending request to Gemini (Model: gemini-1.5-flash)...")
         try:
             # Use the official async client via client.aio as requested
-            # Optimized for Gemini 1.5 Flash exclusively
             response = await asyncio.wait_for(
                 self.client.aio.models.generate_content(
                     model="gemini-1.5-flash",
-                    contents=full_prompt
+                    contents=message
                 ),
-                timeout=self.request_timeout
+                timeout=15.0
             )
             
             print("Gemini response received from gemini-1.5-flash")
             ai_text = response.text.strip()
-            print("AI OUTPUT:", ai_text)
             return ai_text
 
-        except asyncio.TimeoutError:
-            print("Gemini error: Timeout reached with gemini-1.5-flash")
-            logger.error("AI Request Failed: Timeout reached")
-            return "AI assistant temporarily unavailable"
-            
         except Exception as e:
-            # Explicitly log the full error for debugging as requested
-            print("Gemini error details:", e)
-            logger.error(f"AI Request Failed: {str(e)}", exc_info=True)
-            return f"AI assistant temporarily unavailable. Error detail: {str(e)[:50]}..."
+            # Improved error logging to show real API error
+            error_msg = f"Gemini API Error: {str(e)}"
+            print(error_msg)
+            logger.error(error_msg, exc_info=True)
+            return f"AI assistant temporarily unavailable. Error detail: {str(e)[:100]}"
