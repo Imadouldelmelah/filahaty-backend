@@ -45,6 +45,35 @@ NORTH_AFRICAN_PRIORITY = {
     "Maize": 8
 }
 
+def call_ai(user_prompt: str):
+    try:
+        response = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {os.getenv('OPENROUTER_API_KEY')}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "openai/gpt-4o-mini",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "You are an expert agricultural assistant specialized in Algeria farming."
+                    },
+                    {
+                        "role": "user",
+                        "content": user_prompt
+                    }
+                ]
+            },
+            timeout=20
+        )
+        data = response.json()
+        return data["choices"][0]["message"]["content"]
+    except Exception as e:
+        print("OpenRouter Error:", str(e))
+        return "AI unavailable, please try again later"
+
 @router.post("/predict")
 def predict_crop(data: SoilData):
     print(f"--- RULE-BASED ENGINE START ---")
@@ -85,8 +114,7 @@ def predict_crop(data: SoilData):
     
     explanation = "Based on precise soil constraints, " + best_crop + " achieves a " + str(confidence) + "% viability match."
     
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if api_key:
+    if os.getenv("OPENROUTER_API_KEY"):
         explanation_prompt = f"""
 You are an agronomy expert. We have selected {best_crop} for the following North African soil and climate conditions:
 - Nitrogen: {data.nitrogen}
@@ -100,19 +128,7 @@ You are an agronomy expert. We have selected {best_crop} for the following North
 Task: Explain why this crop is suitable based on these specific soil and climate parameters.
 Keep your answer under 3 sentences. Do not use markdown. Do not recommend other crops.
 """     
-        try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
-            payload = {
-                "contents": [{"parts": [{"text": explanation_prompt}]}],
-                "generationConfig": {"response_mime_type": "text/plain"}
-            }
-            resp = requests.post(url, headers={"Content-Type": "application/json"}, json=payload, timeout=4)
-            if resp.status_code == 200:
-                ai_text = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
-                if ai_text:
-                    explanation = ai_text
-        except Exception as e:
-            print(f"Gemini Explanation Generator Failed: {e}")
+        explanation = call_ai(explanation_prompt)
         
     return {
         "crop": best_crop,

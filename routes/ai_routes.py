@@ -1,46 +1,39 @@
-import time
+import os
+import requests
 from fastapi import APIRouter, HTTPException
 from models.chat_models import ChatRequest, ChatResponse
-from services.gemini_service import GeminiService
 from utils.logger import logger
 
 router = APIRouter(prefix="/ai", tags=["AI Assistant"])
 
-# Initialize service safely
-try:
-    gemini_service = GeminiService()
-except Exception as e:
-    logger.critical(f"FATAL: GeminiService failed to initialize: {e}")
-    gemini_service = None
-
 @router.post("/chat", response_model=ChatResponse)
-async def chat_with_ai(request: ChatRequest):
-    # Log incoming user message
-    print("User message received:", request.message)
-    
-    if not gemini_service:
-        logger.error("Chat request rejected: GeminiService unavailable")
-        raise HTTPException(status_code=503, detail="AI Service is currently offline")
-        
-    start_time = time.time()
-    
-    if not request.message.strip():
-        raise HTTPException(status_code=400, detail="Message cannot be empty")
-    
+async def chat_with_ai_endpoint(request: ChatRequest):
+    message = request.message
     try:
-        # Call the GeminiService to generate the AI reply
-        # Improved GeminiService now handles model fallback internally
-        response_text = await gemini_service.generate_response(request.message)
+        response = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {os.getenv('OPENROUTER_API_KEY')}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "openai/gpt-4o-mini",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "You are Filahaty AI, an agricultural expert helping farmers in Algeria."
+                    },
+                    {
+                        "role": "user",
+                        "content": message
+                    }
+                ]
+            }
+        )
         
-        duration = time.time() - start_time
-        logger.info(f"Chat Request Handled: status=200, duration={duration:.2f}s")
-        
-        # Return JSON: {"response": "AI response text"}
-        return ChatResponse(response=response_text)
-        
+        # Consistent return format
+        return ChatResponse(response=response.json()["choices"][0]["message"]["content"])
+
     except Exception as e:
-        # Proper error handling and logging
-        logger.error(f"AI Routes Error: {str(e)}", exc_info=True)
-        print("AI assistant route error:", e)
-        # Return fallback message as a valid response format as requested
+        print("Chat Error:", str(e))
         return ChatResponse(response="AI assistant temporarily unavailable")
