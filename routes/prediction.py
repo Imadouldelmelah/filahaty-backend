@@ -2,6 +2,7 @@ import os
 import requests
 from fastapi import APIRouter, HTTPException
 from models.soil_models import SoilData, MSPRequest
+from utils.logger import logger
 
 router = APIRouter(tags=["Crop Prediction"])
 
@@ -152,64 +153,73 @@ def call_ai(user_prompt: str):
 
 @router.post("/predict")
 def predict_crop(data: SoilData):
-    print(f"--- RULE-BASED ENGINE START ---")
-    print(f"INPUT DATA: {data}")
+    logger.info(f"--- RULE-BASED ENGINE START ---")
+    logger.info(f"INPUT DATA RECEIVED: {data.model_dump()}")
     
-    best_crop = "Unknown"
-    max_score = -1
-    debug_scores = {}
-    
-    n, p, k = data.nitrogen, data.phosphorus, data.potassium
-    temp, hum, ph, rain = data.temperature, data.humidity, data.ph, data.rainfall
-    
-    for crop, profile in CROP_PROFILES.items():
-        score = 0
-        if profile["N"][0] <= n <= profile["N"][1]: score += 1
-        if profile["P"][0] <= p <= profile["P"][1]: score += 1
-        if profile["K"][0] <= k <= profile["K"][1]: score += 1
-        if profile["temp"][0] <= temp <= profile["temp"][1]: score += 1
-        if profile["hum"][0] <= hum <= profile["hum"][1]: score += 1
-        if profile["ph"][0] <= ph <= profile["ph"][1]: score += 1
-        if profile["rain"][0] <= rain <= profile["rain"][1]: score += 1
+    try:
+        best_crop = "Unknown"
+        max_score = -1
+        debug_scores = {}
         
-        debug_scores[crop] = score
+        n, p, k = data.nitrogen, data.phosphorus, data.potassium
+        temp, hum, ph, rain = data.temperature, data.humidity, data.ph, data.rainfall
         
-        if score > max_score:
-            max_score = score
-            best_crop = crop
-        elif score == max_score and max_score > 0:
-            if NORTH_AFRICAN_PRIORITY.get(crop, 99) < NORTH_AFRICAN_PRIORITY.get(best_crop, 99):
+        for crop, profile in CROP_PROFILES.items():
+            score = 0
+            if profile["N"][0] <= n <= profile["N"][1]: score += 1
+            if profile["P"][0] <= p <= profile["P"][1]: score += 1
+            if profile["K"][0] <= k <= profile["K"][1]: score += 1
+            if profile["temp"][0] <= temp <= profile["temp"][1]: score += 1
+            if profile["hum"][0] <= hum <= profile["hum"][1]: score += 1
+            if profile["ph"][0] <= ph <= profile["ph"][1]: score += 1
+            if profile["rain"][0] <= rain <= profile["rain"][1]: score += 1
+            
+            debug_scores[crop] = score
+            
+            if score > max_score:
+                max_score = score
                 best_crop = crop
-                
-    if max_score == 0:
-        best_crop = "Wheat"
+            elif score == max_score and max_score > 0:
+                if NORTH_AFRICAN_PRIORITY.get(crop, 99) < NORTH_AFRICAN_PRIORITY.get(best_crop, 99):
+                    best_crop = crop
+                    
+        if max_score == 0:
+            best_crop = "Wheat"
+            
+        confidence_mapping = {7: 95, 6: 85, 5: 75, 4: 65, 3: 50, 2: 35, 1: 20, 0: 10}
+        confidence = confidence_mapping.get(max_score, 10)
+        img_url = CROP_IMAGES.get(best_crop, CROP_IMAGES["Default"])
         
-    confidence_mapping = {7: 95, 6: 85, 5: 75, 4: 65, 3: 50, 2: 35, 1: 20, 0: 10}
-    confidence = confidence_mapping.get(max_score, 10)
-    img_url = CROP_IMAGES.get(best_crop, CROP_IMAGES["Default"])
-    
-    explanation = "Based on precise soil constraints, " + best_crop + " achieves a " + str(confidence) + "% viability match."
-    
-    if os.getenv("OPENROUTER_API_KEY"):
-        explanation_prompt = f"""
-You are an agronomy expert. We have selected {best_crop} for the following North African soil and climate conditions:
-- Nitrogen: {data.nitrogen}
-- Phosphorus: {data.phosphorus}
-- Potassium: {data.potassium}
-- Temperature: {data.temperature}°C
-- Humidity: {data.humidity}%
-- pH: {data.ph}
-- Rainfall: {data.rainfall}mm
-
-Task: Explain why this crop is suitable based on these specific soil and climate parameters.
-Keep your answer under 3 sentences. Do not use markdown. Do not recommend other crops.
-"""     
-        explanation = call_ai(explanation_prompt)
+        explanation = "Based on precise soil constraints, " + best_crop + " achieves a " + str(confidence) + "% viability match."
         
-    return {
-        "crop": best_crop,
-        "confidence": confidence,
-        "explanation": explanation,
-        "debug_scores": debug_scores,
-        "image_url": img_url
-    }
+        if os.getenv("OPENROUTER_API_KEY"):
+            explanation_prompt = f"""
+    You are an agronomy expert. We have selected {best_crop} for the following North African soil and climate conditions:
+    - Nitrogen: {data.nitrogen}
+    - Phosphorus: {data.phosphorus}
+    - Potassium: {data.potassium}
+    - Temperature: {data.temperature}°C
+    - Humidity: {data.humidity}%
+    - pH: {data.ph}
+    - Rainfall: {data.rainfall}mm
+    
+    Task: Explain why this crop is suitable based on these specific soil and climate parameters.
+    Keep your answer under 3 sentences. Do not use markdown. Do not recommend other crops.
+    """     
+            explanation = call_ai(explanation_prompt)
+            
+        return {
+            "crop": best_crop,
+            "confidence": confidence,
+            "explanation": explanation,
+            "debug_scores": debug_scores,
+            "image_url": img_url
+        }
+    except Exception as e:
+        logger.error(f"ENGINE_ERROR: Recommendation logic failed: {str(e)}")
+        # Raise HTTPException for FastAPI to handle, or return a consistent error JSON
+        return {
+            "error": "Internal recommendation engine error",
+            "details": str(e),
+            "status": "fail"
+        }

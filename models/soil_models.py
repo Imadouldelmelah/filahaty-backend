@@ -1,13 +1,14 @@
 from pydantic import BaseModel
+from typing import Optional
 
 class SoilData(BaseModel):
-    nitrogen: int
-    phosphorus: int
-    potassium: int
-    temperature: float
-    humidity: float
-    ph: float
-    rainfall: float
+    nitrogen: Optional[int] = 50
+    phosphorus: Optional[int] = 50
+    potassium: Optional[int] = 50
+    temperature: Optional[float] = 25.0
+    humidity: Optional[float] = 60.0
+    ph: Optional[float] = 6.5
+    rainfall: Optional[float] = 500.0
 
 class MSPRequest(BaseModel):
     crop_name: str
