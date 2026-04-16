@@ -5,7 +5,7 @@ from config import settings
 from utils.logger import logger
 
 # Import routes
-from routes import prediction, ai_routes, news
+from routes import prediction, ai_routes, news, iot_routes
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -46,6 +46,7 @@ async def log_requests(request: Request, call_next):
 app.include_router(prediction.router)
 app.include_router(ai_routes.router)
 app.include_router(news.router)
+app.include_router(iot_routes.router)
 
 @app.on_event("startup")
 async def startup_event():
