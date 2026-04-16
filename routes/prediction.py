@@ -1,9 +1,75 @@
 import os
 import requests
 from fastapi import APIRouter, HTTPException
-from models.soil_models import SoilData
+from models.soil_models import SoilData, MSPRequest
 
 router = APIRouter(tags=["Crop Prediction"])
+
+# Consolidated MSP Mapping from Legacy Client
+MSP_MAPPING = {
+    "rice": "Paddy - Common",
+    "maize": "Maize",
+    "chana": "Gram",
+    "rajma": "Masur (Lentil)",
+    "toordal": "Arhar (Tur)",
+    "matkidal": "Urad",
+    "moongdal": "Moong",
+    "uraddal": "Urad",
+    "masoordal": "Masur (Lentil)",
+    "pomegranate": "45300.0",
+    "banana": "16349.23",
+    "mango": "32104.56",
+    "grapes": "24987.60",
+    "watermelon": "8675.833",
+    "muskmelon": "18800.78",
+    "apple": "86017.82",
+    "orange": "49897.71",
+    "papaya": "22700.08",
+    "coconut": "Copra - Milling",
+    "cotton": "Cotton",
+    "jute": "Jute",
+    "coffee": "NA"
+}
+
+# 2024 Base Market Support Prices (in local currency/quintal)
+BASE_PRICES = {
+    "Paddy - Common": 2183,
+    "Maize": 2090,
+    "Gram": 5440,
+    "Masur (Lentil)": 6425,
+    "Arhar (Tur)": 7000,
+    "Urad": 6950,
+    "Moong": 8558,
+    "Copra - Milling": 10860,
+    "Cotton": 6620,
+    "Jute": 5050
+}
+
+@router.post("/predict_msp")
+def predict_msp(request: MSPRequest):
+    print(f"--- MSP PREDICTION START ---")
+    print(f"INPUT: {request}")
+    
+    crop_query = request.crop_name.lower()
+    mapping = MSP_MAPPING.get(crop_query, crop_query.capitalize())
+    
+    # Check if we have a direct numeric value from legacy data
+    try:
+        float(mapping)
+        return {"predicted_msp": mapping}
+    except ValueError:
+        pass
+        
+    # Check our base price database
+    price = BASE_PRICES.get(mapping, "NA")
+    
+    # Simulate a "prediction" trend based on year (very basic)
+    if isinstance(price, (int, float)):
+        year_diff = request.current_year - 2024
+        predicted_price = price * (1 + (0.05 * year_diff))
+        return {"predicted_msp": f"{predicted_price:.2f}"}
+        
+    return {"predicted_msp": "Market Price Unavailable"}
 
 # High-quality agricultural image mapping for the professional UI
 CROP_IMAGES = {
@@ -47,6 +113,15 @@ NORTH_AFRICAN_PRIORITY = {
 
 def call_ai(user_prompt: str):
     try:
+        # Audit data egress
+        logger.info(f"SECURITY_AUDIT: Outgoing AI Egress initiated. Character count: {len(user_prompt)}")
+        
+        # Simple sanitization filter check (Defense in depth)
+        sensitive_patterns = ["@", "06", "07", "+213"] # Simple phone/email check
+        if any(p in user_prompt for p in sensitive_patterns):
+             logger.warning("SECURITY_WARNING: Potential PII detected in outgoing prompt. Blocking request.")
+             return "Data security policy prevents processing this prompt."
+
         response = requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
             headers={
@@ -69,9 +144,10 @@ def call_ai(user_prompt: str):
             timeout=20
         )
         data = response.json()
+        logger.info("SECURITY_AUDIT: AI Egress successful.")
         return data["choices"][0]["message"]["content"]
     except Exception as e:
-        print("OpenRouter Error:", str(e))
+        logger.error(f"SECURITY_ERROR: AI Egress failed: {str(e)}")
         return "AI unavailable, please try again later"
 
 @router.post("/predict")

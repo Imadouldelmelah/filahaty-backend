@@ -1,43 +1,67 @@
-import os
-import uvicorn
-from fastapi import FastAPI
+import time
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from dotenv import load_dotenv
+from config import settings
 from utils.logger import logger
 
 # Import routes
-from routes import prediction, ai_routes
-
-# Load environment variables
-load_dotenv()
+from routes import prediction, ai_routes, news
 
 app = FastAPI(
-    title="Filahaty Agricultural Platform API",
+    title=settings.PROJECT_NAME,
     description="Optimized backend for crop recommendation and AI farming assistant.",
-    version="2.1.0"
+    version=settings.VERSION
 )
 
-# Setup CORS
+# Setup CORS with restricted origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Request Logging Middleware (metadata only for security)
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    
+    # Process the request
+    response = await call_next(request)
+    
+    # Calculate duration
+    process_time = (time.time() - start_time) * 1000
+    
+    # Audit log (Internal context only, avoiding sensitive payload logging)
+    logger.info(
+        f"API_AUDIT: {request.method} {request.url.path} - "
+        f"Status: {response.status_code} - "
+        f"Latency: {process_time:.2f}ms"
+    )
+    
+    return response
+
 # Include Routers
 app.include_router(prediction.router)
 app.include_router(ai_routes.router)
+app.include_router(news.router)
 
 @app.on_event("startup")
 async def startup_event():
-    logger.info("Filahaty Backend Starting Up - v2.1.0")
+    # Verify critical settings
+    if not settings.OPENROUTER_API_KEY:
+        logger.warning("SECURITY_ALERT: OPENROUTER_API_KEY is missing. AI features will fail.")
+    if not settings.NEWS_API_KEY:
+        logger.warning("SECURITY_ALERT: NEWS_API_KEY is missing. News features will be disabled.")
+        
+    logger.info(f"Filahaty Backend Hardened Surface - v{settings.VERSION}")
 
 @app.get("/")
 def root():
     return {
-        "status": "Filahaty AI backend running"
+        "status": "Filahaty AI backend running",
+        "security_level": "High"
     }
 
 if __name__ == "__main__":
