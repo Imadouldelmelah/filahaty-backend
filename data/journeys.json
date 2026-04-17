@@ -13,5 +13,20 @@
         "journey_id": "37353556-ee8b-4a74-9d0f-f3facfbb4b14",
         "crop_name": "tomato",
         "start_date": "2026-04-13"
+    },
+    "4f4b0765-7b12-444d-bca6-44394bdc909f": {
+        "journey_id": "4f4b0765-7b12-444d-bca6-44394bdc909f",
+        "crop_name": "pepper",
+        "start_date": "2026-04-10",
+        "history": [
+            {
+                "action": "Applied balanced initial fertilizer NPK 15-15-15",
+                "timestamp": "2026-04-17T15:37:05.206699"
+            },
+            {
+                "action": "Installed organic mulch for moisture retention",
+                "timestamp": "2026-04-17T15:37:05.208255"
+            }
+        ]
     }
 }

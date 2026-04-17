@@ -1,32 +1,65 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from services.tracking_service import tracking_service
-from services.guidance_service import guidance_service
+from services.ai_agronomist import ai_agronomist
+from utils.logger import logger
 
 router = APIRouter(prefix="/tracking", tags=["Crop Tracking"])
 
-class StartJourneyRequest(BaseModel):
-    crop_name: str
-    start_date: str # YYYY-MM-DD
+class JourneyStartRequest(BaseModel):
+    crop: str
+    start_date: str
+
+class ActionRecordRequest(BaseModel):
+    journey_id: str
+    action: str
 
 @router.post("/start")
-async def start_journey_endpoint(request: StartJourneyRequest):
+async def start_farming_journey_endpoint(request: JourneyStartRequest):
     try:
-        journey_id = tracking_service.start_journey(request.crop_name, request.start_date)
+        journey_id = tracking_service.start_journey(request.crop, request.start_date)
         return {"journey_id": journey_id, "status": "started"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/progress/{journey_id}")
-async def get_progress_endpoint(journey_id: str):
+async def get_farming_progress_endpoint(journey_id: str):
+    result = tracking_service.get_progress(journey_id)
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+@router.post("/action/record")
+async def record_farming_action_endpoint(request: ActionRecordRequest):
+    """
+    Endpoint to record a completed farming action.
+    """
+    result = tracking_service.record_action(request.journey_id, request.action)
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+@router.get("/guidance/{journey_id}")
+async def get_journey_guidance_endpoint(journey_id: str):
+    """
+    Expert guidance based on journey progress + AI enhancement.
+    """
     progress = tracking_service.get_progress(journey_id)
     if "error" in progress:
         raise HTTPException(status_code=404, detail=progress["error"])
-    return progress
-
-@router.get("/guidance/{journey_id}")
-async def get_guidance_endpoint(journey_id: str):
-    guidance = await guidance_service.get_daily_guidance(journey_id)
-    if "error" in guidance:
-        raise HTTPException(status_code=400, detail=guidance["error"])
-    return guidance
+    
+    # context for AI
+    context = {
+        "crop_name": progress["crop"],
+        "current_stage": progress["stage"],
+        "journey_id": journey_id,
+        "weather": "Sunny",  # In production, these should be passed or fetched
+        "soil": "Sandy",
+        "field_size": "Standard"
+    }
+    
+    advice = await ai_agronomist.generate_advice(context)
+    return {
+        "progress": progress,
+        "ai_advice": advice
+    }

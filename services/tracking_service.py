@@ -45,7 +45,8 @@ class TrackingService:
         journeys[journey_id] = {
             "journey_id": journey_id,
             "crop_name": crop_name.lower(),
-            "start_date": start_date
+            "start_date": start_date,
+            "history": []
         }
         self._save_journeys(journeys)
         return journey_id
@@ -75,8 +76,27 @@ class TrackingService:
             "crop": crop_name,
             "day": current_day,
             "stage": stage,
-            "start_date": journey["start_date"]
+            "start_date": journey["start_date"],
+            "history": journey.get("history", [])
         }
+
+    def record_action(self, journey_id: str, action: str):
+        """
+        Records a completed action in the journey history.
+        """
+        journeys = self._load_journeys()
+        if journey_id not in journeys:
+            return {"error": "Journey not found"}
+        
+        if "history" not in journeys[journey_id]:
+            journeys[journey_id]["history"] = []
+            
+        journeys[journey_id]["history"].append({
+            "action": action,
+            "timestamp": datetime.now().isoformat()
+        })
+        self._save_journeys(journeys)
+        return {"status": "success", "message": "Action recorded"}
 
     def _calculate_stage(self, crop_name: str, day: int):
         if crop_name not in CROP_PLANS:

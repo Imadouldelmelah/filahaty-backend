@@ -2,6 +2,9 @@ import os
 import requests
 from fastapi import APIRouter, HTTPException
 from models.chat_models import ChatRequest, ChatResponse
+from services.ai_agronomist import ai_agronomist
+from pydantic import BaseModel
+from typing import List
 from utils.logger import logger
 
 router = APIRouter(prefix="/ai", tags=["AI Assistant"])
@@ -31,9 +34,37 @@ async def chat_with_ai_endpoint(request: ChatRequest):
             }
         )
         
-        # Consistent return format
         return ChatResponse(response=response.json()["choices"][0]["message"]["content"])
 
     except Exception as e:
-        print("Chat Error:", str(e))
+        logger.error(f"Chat Error: {str(e)}")
         return ChatResponse(response="AI assistant temporarily unavailable")
+
+class AdviceRequest(BaseModel):
+    crop: str
+    stage: str
+    weather: str
+    soil: str
+    journey_id: str = None
+
+@router.post("/advice")
+async def get_farming_advice_endpoint(request: AdviceRequest):
+    """
+    Highly specialized AI agronomy advice endpoint with context memory support.
+    """
+    try:
+        context = {
+            "crop_name": request.crop,
+            "current_stage": request.stage,
+            "weather": request.weather,
+            "soil": request.soil,
+            "field_size": "Not specified",
+            "journey_id": request.journey_id
+        }
+        
+        result = await ai_agronomist.generate_advice(context)
+        return result
+        
+    except Exception as e:
+        logger.error(f"AI Advice Route Error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Advice generator temporarily unavailable")
