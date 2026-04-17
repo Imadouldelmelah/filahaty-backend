@@ -1,4 +1,5 @@
 import random
+from services.health_score_service import field_health_score_service
 
 class FakeMonitoringService:
     """
@@ -16,7 +17,7 @@ class FakeMonitoringService:
         Returns:
             dict: {temperature, humidity, soil_moisture, ph, N, P, K, rainfall}
         """
-        return {
+        data = {
             "field_id": field_id,
             "temperature": round(random.uniform(18.0, 38.0), 1),
             "humidity": round(random.uniform(45.0, 92.0), 1),
@@ -27,6 +28,13 @@ class FakeMonitoringService:
             "K": random.randint(20, 45),
             "rainfall": round(random.uniform(0.0, 150.0), 1)
         }
+        
+        # Calculate derived health score
+        health_assessment = field_health_score_service.calculate_health_score(data)
+        data["health_score"] = health_assessment["score"]
+        data["health_status"] = health_assessment["status"]
+        
+        return data
 
 # Singleton instance
 fake_monitoring_service = FakeMonitoringService()
