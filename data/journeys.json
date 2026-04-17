@@ -1,0 +1,17 @@
+{
+    "2f8f6a2f-ae9d-4b44-abf6-33c632e08e08": {
+        "journey_id": "2f8f6a2f-ae9d-4b44-abf6-33c632e08e08",
+        "crop_name": "tomato",
+        "start_date": "2026-04-13"
+    },
+    "7f16c94a-8cdf-4fec-9ef4-998781b97b1e": {
+        "journey_id": "7f16c94a-8cdf-4fec-9ef4-998781b97b1e",
+        "crop_name": "pepper",
+        "start_date": "2026-03-29"
+    },
+    "37353556-ee8b-4a74-9d0f-f3facfbb4b14": {
+        "journey_id": "37353556-ee8b-4a74-9d0f-f3facfbb4b14",
+        "crop_name": "tomato",
+        "start_date": "2026-04-13"
+    }
+}
