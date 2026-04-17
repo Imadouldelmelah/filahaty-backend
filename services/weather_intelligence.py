@@ -7,11 +7,12 @@ class WeatherIntelligenceService:
         self.HEAT_THRESHOLD = 35.0  # °C
         self.HUMIDITY_THRESHOLD = 90.0  # %
 
-    def analyze_weather(self, weather_data: dict):
+    def analyze_weather(self, weather_data: dict, monitoring_data: dict = None):
         """
-        Analyzes meteorological data to provide farming alerts and recommendations.
+        Analyzes meteorological and sensor data to provide farming alerts and recommendations.
         Args:
             weather_data (dict): {temperature, humidity, rain, wind}
+            monitoring_data (dict): {soil_moisture, ph, ...}
         Returns:
             dict: {alerts: List[str], recommendations: List[str]}
         """
@@ -46,17 +47,27 @@ class WeatherIntelligenceService:
             alerts.append("ADVISORY: Elevated Humidity.")
             recommendations.append("Check for pests that thrive in humid environments (e.g., aphids).")
 
+        # 4. Integrated Soil Health Logic
+        if monitoring_data:
+            soil_moisture = monitoring_data.get("soil_moisture", 50)
+            if soil_moisture > 75 and (rain or 0) > 0.5:
+                alerts.append("CRITICAL: Root Suffocation / Waterlogging Risk.")
+                recommendations.append("Soil is already saturated. Heavy rain detected. Ensure drainage is clear.")
+            elif soil_moisture < 25:
+                alerts.append("ADVISORY: Low Soil Moisture.")
+                recommendations.append("Soil is dangerously dry. Deep irrigation required immediately.")
+
         return {
             "alerts": alerts,
             "recommendations": recommendations,
             "summary": self._generate_summary(temp, rain)
         }
 
-    def generate_smart_alerts(self, weather_data: dict, crop_name: str = "", current_stage: str = ""):
+    def generate_smart_alerts(self, weather_data: dict, crop_name: str = "", current_stage: str = "", monitoring_data: dict = None):
         """
-        Generates crop-aware alerts based on weather and growth stage sensitivity.
+        Generates crop-aware alerts based on weather, growth stage, and sensor data.
         """
-        analysis = self.analyze_weather(weather_data)
+        analysis = self.analyze_weather(weather_data, monitoring_data)
         smart_alerts = []
         
         temp = weather_data.get("temperature", 0)
@@ -92,6 +103,25 @@ class WeatherIntelligenceService:
                 msg = f"High Disease Risk (Blight/Mildew)!"
                 rec = f"Humid conditions (> {humidity}%) favor pathogens on {crop_name}. Apply preventive organic fungicide if needed."
             smart_alerts.append({"type": "disease_risk", "message": msg, "recommendation": rec})
+
+        # 4. Soil pH and Moisture Alerts
+        if monitoring_data:
+            soil_moiture = monitoring_data.get("soil_moisture", 50)
+            ph = monitoring_data.get("ph", 7.0)
+            
+            if soil_moiture > 80:
+                smart_alerts.append({
+                    "type": "waterlogging_risk", 
+                    "message": "Critical: Field saturation detected!", 
+                    "recommendation": "Risk of root rot. Delay any overhead irrigation and inspect drainage channels."
+                })
+            
+            if ph < 5.5 or ph > 7.5:
+                smart_alerts.append({
+                    "type": "ph_mismatch",
+                    "message": "Advisory: Soil pH is outside optimal range.",
+                    "recommendation": f"Current pH {ph} may lock out nutrients for {crop_name or 'crops'}. Consult soil treatment guide."
+                })
 
         return smart_alerts
 

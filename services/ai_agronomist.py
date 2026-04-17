@@ -17,7 +17,8 @@ class AIAgronomistService:
         crop_name = context.get('crop_name', '')
         current_stage_name = context.get('current_stage', '')
         journey_id = context.get('journey_id')
-        weather_data = context.get('weather_data')  # Optional raw weather dict
+        weather_data = context.get('weather_data')
+        monitoring_data = context.get('monitoring_data')
         
         # 1. Fetch Expert Rules from Agronomy Engine
         expert_rules = ""
@@ -40,6 +41,22 @@ class AIAgronomistService:
                 history_context = "\nPREVIOUS ACTIONS TAKEN:\n" + "\n".join(history_items)
             else:
                 history_context = "\nPREVIOUS ACTIONS TAKEN:\n- No history recorded yet."
+        
+        # 4. Process Real-time Monitoring Data
+        monitoring_context = ""
+        if monitoring_data:
+            monitoring_context = f"""
+            REAL-TIME IOT SENSOR READINGS (CRITICAL):
+            - Soil Moisture: {monitoring_data.get('soil_moisture')}%
+            - Soil pH: {monitoring_data.get('ph')}
+            - Nitrogen (N): {monitoring_data.get('N')} mg/kg
+            - Phosphorus (P): {monitoring_data.get('P')} mg/kg
+            - Potassium (K): {monitoring_data.get('K')} mg/kg
+            - Field Temp: {monitoring_data.get('temperature')}°C
+            - Field Humidity: {monitoring_data.get('humidity')}%
+            """
+        else:
+            monitoring_context = "\nREAL-TIME SENSOR DATA:\n- Offline/No data available."
         
         if "error" not in expert_plan:
             # Find the specific stage in the expert plan
@@ -81,6 +98,8 @@ class AIAgronomistService:
         
         {history_context}
         
+        {monitoring_context}
+        
         {expert_rules}
         
         YOUR TASK:
@@ -92,9 +111,14 @@ class AIAgronomistService:
         3. Respect the PREVIOUS ACTIONS:
            - Do not recommend redundant tasks that have already been recorded as completed.
            - Provide continuity (e.g., "Continuing from your last action of...")
-        4. ENHANCE the rules by:
+        4. REACT TO SENSOR DATA (URGENT):
+           - Analyze the REAL-TIME IOT SENSOR READINGS.
+           - If moisture is low (<30%), prioritize irrigation.
+           - If pH is unbalanced, explain how it affects nutrient uptake.
+           - Explicitly mention the sensor values in your explanation (e.g., "Current moisture is 22%, which is dangerously low...").
+        5. ENHANCE the rules by:
            - Explaining the importance of each task (the "why").
-           - Increasing precision based on the local weather and soil (e.g., if it's hot, adjust irrigation).
+           - Increasing precision based on the local weather and soil.
            - Adapting the instructions to the the field size.
         5. Provide clear, simple, step-by-step instructions.
         6. Format your entire response as a VALID JSON object.

@@ -12,6 +12,7 @@ class AgronomistContext(BaseModel):
     weather: str
     soil: str
     field_size: str
+    monitoring_data: dict = None
 
 class AgronomistResponse(BaseModel):
     advice: str

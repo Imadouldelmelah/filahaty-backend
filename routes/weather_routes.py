@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query
 from services.weather_service import weather_service
 from services.weather_intelligence import weather_intelligence
+from services.fake_monitoring_service import fake_monitoring_service
 from utils.logger import logger
 
 router = APIRouter(prefix="/weather", tags=["Weather"])
@@ -38,7 +39,8 @@ async def get_weather_insights_endpoint(
         if weather_data["temperature"] is None:
             raise HTTPException(status_code=503, detail="Weather service unavailable")
             
-        insights = weather_intelligence.analyze_weather(weather_data)
+        monitoring_data = fake_monitoring_service.get_field_monitoring_data()
+        insights = weather_intelligence.analyze_weather(weather_data, monitoring_data)
         
         return {
             "weather": weather_data,
@@ -63,7 +65,8 @@ async def get_weather_alerts_endpoint(
         if weather_data["temperature"] is None:
             raise HTTPException(status_code=503, detail="Weather service unavailable")
             
-        alerts = weather_intelligence.generate_smart_alerts(weather_data, crop, stage)
+        monitoring_data = fake_monitoring_service.get_field_monitoring_data()
+        alerts = weather_intelligence.generate_smart_alerts(weather_data, crop, stage, monitoring_data)
         return {"alerts": alerts}
     except Exception as e:
         logger.error(f"Weather Alerts Error: {str(e)}")

@@ -1,7 +1,9 @@
 import os
 import requests
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from models.soil_models import SoilData, MSPRequest
+from services.fake_monitoring_service import fake_monitoring_service
+from services.weather_service import weather_service
 from utils.logger import logger
 
 router = APIRouter(tags=["Crop Prediction"])
@@ -223,3 +225,39 @@ def predict_crop(data: SoilData):
             "details": str(e),
             "status": "fail"
         }
+
+@router.get("/predict/auto")
+def predict_crop_automatically(
+    field_id: str = Query("default_field"),
+    lat: float = Query(None),
+    lon: float = Query(None)
+):
+    """
+    Standardized 'Crop Suggestion' powered by real-time field sensors and weather.
+    """
+    try:
+        # 1. Fetch Monitoring Data (Source of Truth)
+        sensors = fake_monitoring_service.get_field_monitoring_data(field_id)
+        
+        # 2. Fetch Weather Data (if location available)
+        weather = {"temperature": sensors["temperature"], "humidity": sensors["humidity"], "rain": sensors["rainfall"]}
+        if lat is not None and lon is not None:
+             weather = weather_service.get_weather(lat, lon)
+        
+        # 3. Map to SoilData model
+        soil_data = SoilData(
+            nitrogen=sensors["N"],
+            phosphorus=sensors["P"],
+            potassium=sensors["K"],
+            temperature=weather["temperature"] or sensors["temperature"],
+            humidity=weather["humidity"] or sensors["humidity"],
+            ph=sensors["ph"],
+            rainfall=weather["rain"] or sensors["rainfall"]
+        )
+        
+        # 4. Use existing prediction logic
+        return predict_crop(soil_data)
+        
+    except Exception as e:
+        logger.error(f"AUTO_PREDICT_ERROR: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

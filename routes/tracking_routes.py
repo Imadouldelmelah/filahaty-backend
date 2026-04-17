@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from services.tracking_service import tracking_service
 from services.ai_agronomist import ai_agronomist
 from services.weather_service import weather_service
+from services.fake_monitoring_service import fake_monitoring_service
 from utils.logger import logger
 
 router = APIRouter(prefix="/tracking", tags=["Crop Tracking"])
@@ -61,6 +62,9 @@ async def get_journey_guidance_endpoint(journey_id: str):
     if progress.get("latitude") and progress.get("longitude"):
         weather_data = weather_service.get_weather(progress["latitude"], progress["longitude"])
     
+    # Fetch real-time monitoring data for the field
+    monitoring_data = fake_monitoring_service.get_field_monitoring_data(journey_id)
+    
     # context for AI
     context = {
         "crop_name": progress["crop"],
@@ -68,6 +72,7 @@ async def get_journey_guidance_endpoint(journey_id: str):
         "journey_id": journey_id,
         "weather": "Dynamic" if weather_data else "Sunny", 
         "weather_data": weather_data,
+        "monitoring_data": monitoring_data,
         "soil": "Sandy",
         "field_size": "Standard"
     }
