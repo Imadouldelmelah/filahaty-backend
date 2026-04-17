@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from services.tracking_service import tracking_service
 from services.ai_agronomist import ai_agronomist
+from services.weather_service import weather_service
 from utils.logger import logger
 
 router = APIRouter(prefix="/tracking", tags=["Crop Tracking"])
@@ -9,6 +10,8 @@ router = APIRouter(prefix="/tracking", tags=["Crop Tracking"])
 class JourneyStartRequest(BaseModel):
     crop: str
     start_date: str
+    lat: float = None
+    lon: float = None
 
 class ActionRecordRequest(BaseModel):
     journey_id: str
@@ -17,7 +20,12 @@ class ActionRecordRequest(BaseModel):
 @router.post("/start")
 async def start_farming_journey_endpoint(request: JourneyStartRequest):
     try:
-        journey_id = tracking_service.start_journey(request.crop, request.start_date)
+        journey_id = tracking_service.start_journey(
+            request.crop, 
+            request.start_date,
+            request.lat,
+            request.lon
+        )
         return {"journey_id": journey_id, "status": "started"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -48,12 +56,18 @@ async def get_journey_guidance_endpoint(journey_id: str):
     if "error" in progress:
         raise HTTPException(status_code=404, detail=progress["error"])
     
+    # Fetch real-time weather based on coordinates
+    weather_data = None
+    if progress.get("latitude") and progress.get("longitude"):
+        weather_data = weather_service.get_weather(progress["latitude"], progress["longitude"])
+    
     # context for AI
     context = {
         "crop_name": progress["crop"],
         "current_stage": progress["stage"],
         "journey_id": journey_id,
-        "weather": "Sunny",  # In production, these should be passed or fetched
+        "weather": "Dynamic" if weather_data else "Sunny", 
+        "weather_data": weather_data,
         "soil": "Sandy",
         "field_size": "Standard"
     }

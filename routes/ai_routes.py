@@ -3,6 +3,7 @@ import requests
 from fastapi import APIRouter, HTTPException
 from models.chat_models import ChatRequest, ChatResponse
 from services.ai_agronomist import ai_agronomist
+from services.weather_service import weather_service
 from pydantic import BaseModel
 from typing import List
 from utils.logger import logger
@@ -46,17 +47,24 @@ class AdviceRequest(BaseModel):
     weather: str
     soil: str
     journey_id: str = None
+    lat: float = None
+    lon: float = None
 
 @router.post("/advice")
 async def get_farming_advice_endpoint(request: AdviceRequest):
     """
-    Highly specialized AI agronomy advice endpoint with context memory support.
+    Highly specialized AI agronomy advice endpoint with context memory and weather sync support.
     """
     try:
+        weather_data = None
+        if request.lat and request.lon:
+            weather_data = weather_service.get_weather(request.lat, request.lon)
+            
         context = {
             "crop_name": request.crop,
             "current_stage": request.stage,
-            "weather": request.weather,
+            "weather": request.weather if not weather_data else "Real-time Sync",
+            "weather_data": weather_data,
             "soil": request.soil,
             "field_size": "Not specified",
             "journey_id": request.journey_id

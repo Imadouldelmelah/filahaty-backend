@@ -2,6 +2,7 @@ import json
 from services.gemini_service import GeminiService
 from services.agronomy_engine import get_crop_plan
 from services.tracking_service import tracking_service
+from services.weather_intelligence import weather_intelligence
 from utils.logger import logger
 
 class AIAgronomistService:
@@ -16,12 +17,21 @@ class AIAgronomistService:
         crop_name = context.get('crop_name', '')
         current_stage_name = context.get('current_stage', '')
         journey_id = context.get('journey_id')
+        weather_data = context.get('weather_data')  # Optional raw weather dict
         
         # 1. Fetch Expert Rules from Agronomy Engine
         expert_rules = ""
         expert_plan = get_crop_plan(crop_name)
         
-        # 2. Fetch Journey History (Context Memory)
+        # 2. Get Deterministic Scientific Insights (Weather Guardrails)
+        scientific_insights = ""
+        if weather_data:
+            insights = weather_intelligence.analyze_weather(weather_data)
+            alerts = "\n".join([f"!! {a}" for a in insights['alerts']])
+            recs = "\n".join([f"* {r}" for r in insights['recommendations']])
+            scientific_insights = f"\nSCIENTIFIC WEATHER GUARDRAILS (MANDATORY):\n{alerts}\n{recs}"
+        
+        # 3. Fetch Journey History (Context Memory)
         history_context = ""
         if journey_id:
             progress = tracking_service.get_progress(journey_id)
@@ -67,23 +77,29 @@ class AIAgronomistService:
         - Soil Type: {context.get('soil')}
         - Field Size: {context.get('field_size')}
         
+        {scientific_insights}
+        
         {history_context}
         
         {expert_rules}
         
         YOUR TASK:
         1. Start with the EXPERT RULES as your scientific foundation.
-        2. Respect the PREVIOUS ACTIONS:
+        2. MANDATORY WEATHER OVERRIDE:
+           - Priority 1: Observe the SCIENTIFIC WEATHER GUARDRAILS.
+           - If a guardrail contradicts an expert rule (e.g., skip irrigation due to rain), YOU MUST prioritize the guardrail.
+           - Mention the specific weather metric (e.g., "Because temperature has reached 42°C, you must...")
+        3. Respect the PREVIOUS ACTIONS:
            - Do not recommend redundant tasks that have already been recorded as completed.
            - Provide continuity (e.g., "Continuing from your last action of...")
-        3. ENHANCE the rules by:
+        4. ENHANCE the rules by:
            - Explaining the importance of each task (the "why").
            - Increasing precision based on the local weather and soil (e.g., if it's hot, adjust irrigation).
            - Adapting the instructions to the the field size.
-        3. Provide clear, simple, step-by-step instructions.
-        4. Format your entire response as a VALID JSON object.
-        5. Do NOT include any text outside the JSON object.
-        6. The JSON schema MUST be:
+        5. Provide clear, simple, step-by-step instructions.
+        6. Format your entire response as a VALID JSON object.
+        7. Do NOT include any text outside the JSON object.
+        8. The JSON schema MUST be:
         {{
             "advice": "Grounded expert advice string with professional tone.",
             "actions": ["Step 1: description", "Step 2: description", ...]

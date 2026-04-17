@@ -28,5 +28,13 @@
                 "timestamp": "2026-04-17T15:37:05.208255"
             }
         ]
+    },
+    "062de9d3-9ab7-4491-a5d3-d9c126e76e64": {
+        "journey_id": "062de9d3-9ab7-4491-a5d3-d9c126e76e64",
+        "crop_name": "tomato",
+        "start_date": "2026-04-10",
+        "latitude": 35.19,
+        "longitude": -0.63,
+        "history": []
     }
 }

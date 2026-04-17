@@ -24,12 +24,14 @@ class TrackingService:
         with open(DATA_FILE, "w") as f:
             json.dump(journeys, f, indent=4)
 
-    def start_journey(self, crop_name: str, start_date: str):
+    def start_journey(self, crop_name: str, start_date: str, lat: float = None, lon: float = None):
         """
         Starts a new farming journey.
         Args:
             crop_name (str): Name of the crop.
             start_date (str): Start date in YYYY-MM-DD format.
+            lat (float): Latitude of the farm.
+            lon (float): Longitude of the farm.
         Returns:
             str: Unique journey_id.
         """
@@ -46,6 +48,8 @@ class TrackingService:
             "journey_id": journey_id,
             "crop_name": crop_name.lower(),
             "start_date": start_date,
+            "latitude": lat,
+            "longitude": lon,
             "history": []
         }
         self._save_journeys(journeys)
@@ -77,6 +81,8 @@ class TrackingService:
             "day": current_day,
             "stage": stage,
             "start_date": journey["start_date"],
+            "latitude": journey.get("latitude"),
+            "longitude": journey.get("longitude"),
             "history": journey.get("history", [])
         }
 
