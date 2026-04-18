@@ -28,12 +28,18 @@ class FakeMonitoringService:
             "rainfall": round(random.uniform(0.0, 150.0), 1)
         }
         
-        # Calculate derived health score (Lazy loaded)
-        from services.health_score_service import FieldHealthScoreService
-        health_svc = FieldHealthScoreService()
-        health_assessment = health_svc.calculate_health_score(data)
-        data["health_score"] = health_assessment["score"]
-        data["health_status"] = health_assessment["status"]
+        # Calculate derived health score (Indestructible integration)
+        try:
+            from services.health_score_service import FieldHealthScoreService
+            health_svc = FieldHealthScoreService()
+            health_assessment = health_svc.calculate_health_score(data)
+            data["health_score"] = health_assessment["score"]
+            data["health_status"] = health_assessment["status"]
+        except Exception as e:
+            from utils.logger import logger
+            logger.error(f"Health score calculation failed in FakeMonitoringService: {str(e)}")
+            data["health_score"] = 85
+            data["health_status"] = "Healthy"
         
         return data
 

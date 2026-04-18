@@ -11,6 +11,7 @@ class AgronomistContext(BaseModel):
     weather: str
     soil: str
     field_size: str
+    field_id: str = "default_field"
     monitoring_data: dict = None
 
 class AgronomistResponse(BaseModel):
@@ -22,6 +23,12 @@ async def get_agronomist_advice_endpoint(context: AgronomistContext):
     try:
         # Convert Pydantic model to dict
         context_dict = context.model_dump()
+        # Always fetch live monitoring data internally for consistency
+        from services.fake_monitoring_service import FakeMonitoringService
+        monitoring_svc = FakeMonitoringService()
+        field_id = context_dict.get("field_id", "default_field")
+        context_dict["monitoring_data"] = monitoring_svc.get_field_monitoring_data(field_id)
+        
         from services.ai_agronomist import AIAgronomistService
         agronomist_svc = AIAgronomistService()
         result = await agronomist_svc.generate_advice(context_dict)

@@ -1,8 +1,6 @@
 import json
 from services.gemini_service import GeminiService
 from services.agronomy_engine import get_crop_plan
-from services.tracking_service import tracking_service
-from services.weather_intelligence import weather_intelligence
 from utils.logger import logger
 
 class AIAgronomistService:
@@ -24,10 +22,11 @@ class AIAgronomistService:
         expert_rules = ""
         expert_plan = get_crop_plan(crop_name)
         
-        # 2. Get Deterministic Scientific Insights (Weather Guardrails)
         scientific_insights = ""
         if weather_data:
-            insights = weather_intelligence.analyze_weather(weather_data)
+            from services.weather_intelligence import WeatherIntelligenceService
+            weather_intel = WeatherIntelligenceService()
+            insights = weather_intel.analyze_weather(weather_data)
             alerts = "\n".join([f"!! {a}" for a in insights['alerts']])
             recs = "\n".join([f"* {r}" for r in insights['recommendations']])
             scientific_insights = f"\nSCIENTIFIC WEATHER GUARDRAILS (MANDATORY):\n{alerts}\n{recs}"
@@ -35,7 +34,9 @@ class AIAgronomistService:
         # 3. Fetch Journey History (Context Memory)
         history_context = ""
         if journey_id:
-            progress = tracking_service.get_progress(journey_id)
+            from services.tracking_service import TrackingService
+            tracking_svc = TrackingService()
+            progress = tracking_svc.get_progress(journey_id)
             if "history" in progress and progress["history"]:
                 history_items = [f"- {h['action']} (at {h['timestamp']})" for h in progress["history"]]
                 history_context = "\nPREVIOUS ACTIONS TAKEN:\n" + "\n".join(history_items)

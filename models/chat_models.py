@@ -18,4 +18,5 @@ class AdvancedChatRequest(BaseModel):
     monitoring_data: Optional[dict] = None
     lat: Optional[float] = None
     lon: Optional[float] = None
+    field_id: Optional[str] = "default_field"
 

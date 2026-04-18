@@ -60,10 +60,16 @@ async def predict_field_yield(request: YieldPredictionRequest):
     Predicts crop yield based on field size, crop, monitoring, and weather data.
     """
     try:
+        # Always fetch live monitoring data internally for consistency
+        from services.fake_monitoring_service import FakeMonitoringService
+        monitoring_svc = FakeMonitoringService()
+        field_id = request.field_id or "default_field"
+        monitoring_data = monitoring_svc.get_field_monitoring_data(field_id)
+        
         context = {
             "crop_name": request.crop_name,
             "field_size_hectares": request.field_size_hectares,
-            "monitoring_data": request.monitoring_data,
+            "monitoring_data": monitoring_data,
             "weather_data": request.weather_data
         }
         

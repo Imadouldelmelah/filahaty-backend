@@ -9,14 +9,14 @@ from utils.logger import logger
 # Wrap risky imports to capture real crash reasons
 try:
     from routes import (
-        prediction, ai_routes, news, iot_routes, 
+        prediction, ai_routes, news, 
         agronomy_routes, tracking_routes, agronomist_routes, 
         weather_routes, field_routes, marketplace_routes, unified_ai_routes
     )
 except Exception as e:
     print("Import error detected during startup:", str(e))
     # We don't raise here so the server can attempt to start in degraded mode
-    prediction = ai_routes = news = iot_routes = agronomy_routes = \
+    prediction = ai_routes = news = agronomy_routes = \
     tracking_routes = agronomist_routes = weather_routes = \
     field_routes = marketplace_routes = unified_ai_routes = None
 
@@ -60,7 +60,6 @@ try:
     if prediction: app.include_router(prediction.router)
     if ai_routes: app.include_router(ai_routes.router)
     if news: app.include_router(news.router)
-    if iot_routes: app.include_router(iot_routes.router)
     if agronomy_routes: app.include_router(agronomy_routes.router)
     if tracking_routes: app.include_router(tracking_routes.router)
     if agronomist_routes: app.include_router(agronomist_routes.router)
