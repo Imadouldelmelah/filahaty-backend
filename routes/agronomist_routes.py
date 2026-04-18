@@ -1,7 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List
-from services.ai_agronomist import ai_agronomist
 from utils.logger import logger
 
 router = APIRouter(prefix="/agronomist", tags=["AI Agronomist"])
@@ -23,7 +22,9 @@ async def get_agronomist_advice_endpoint(context: AgronomistContext):
     try:
         # Convert Pydantic model to dict
         context_dict = context.model_dump()
-        result = await ai_agronomist.generate_advice(context_dict)
+        from services.ai_agronomist import AIAgronomistService
+        agronomist_svc = AIAgronomistService()
+        result = await agronomist_svc.generate_advice(context_dict)
         
         if "error" in result and len(result) == 1: # Basic error handling from service
              raise HTTPException(status_code=500, detail="AI failed to generate structured advice")

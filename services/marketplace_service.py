@@ -49,5 +49,4 @@ class MarketplaceService:
         Returns all active listings.
         """
         return self._load_items()
-
-marketplace_service = MarketplaceService()
+# Class exported for on-demand instantiation

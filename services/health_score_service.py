@@ -67,5 +67,4 @@ class FieldHealthScoreService:
             "score": score,
             "status": status
         }
-
-field_health_score_service = FieldHealthScoreService()
+# Class exported for on-demand initialization

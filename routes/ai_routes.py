@@ -3,9 +3,6 @@ import requests
 import base64
 from fastapi import APIRouter, HTTPException, UploadFile, File
 from models.chat_models import ChatRequest, ChatResponse, AdvancedChatRequest
-from services.weather_service import weather_service
-from pydantic import BaseModel
-from typing import List
 from utils.logger import logger
 
 router = APIRouter(prefix="/ai", tags=["AI Assistant"])
@@ -54,7 +51,9 @@ async def advanced_chat_with_ai_endpoint(request: AdvancedChatRequest):
     try:
         weather_data = None
         if request.lat and request.lon:
-            weather_data = weather_service.get_weather(request.lat, request.lon)
+            from services.weather_service import WeatherService
+            weather_svc = WeatherService()
+            weather_data = weather_svc.get_weather(request.lat, request.lon)
             
         context = {
             "crop_name": request.crop,
@@ -64,8 +63,9 @@ async def advanced_chat_with_ai_endpoint(request: AdvancedChatRequest):
             "monitoring_data": request.monitoring_data
         }
         
-        from services.ai_agronomist import ai_agronomist
-        response_text = await ai_agronomist.generate_advanced_chat(context, request.message)
+        from services.ai_agronomist import AIAgronomistService
+        agronomist_svc = AIAgronomistService()
+        response_text = await agronomist_svc.generate_advanced_chat(context, request.message)
         return ChatResponse(response=response_text)
         
     except Exception as e:
@@ -88,9 +88,10 @@ async def analyze_plant_image(file: UploadFile = File(...)):
         # Get mime type
         mime_type = file.content_type or "image/jpeg"
         
-        # Analyze using disease detector service
-        from services.disease_detector import disease_detector_service
-        result = await disease_detector_service.analyze_crop_image(base64_image, mime_type)
+        # Analyze using disease detector service (Lazy loaded)
+        from services.disease_detector import DiseaseDetectionService
+        disease_svc = DiseaseDetectionService()
+        result = await disease_svc.analyze_crop_image(base64_image, mime_type)
         return result
         
     except Exception as e:
@@ -114,7 +115,9 @@ async def get_farming_advice_endpoint(request: AdviceRequest):
     try:
         weather_data = None
         if request.lat and request.lon:
-            weather_data = weather_service.get_weather(request.lat, request.lon)
+            from services.weather_service import WeatherService
+            weather_svc = WeatherService()
+            weather_data = weather_svc.get_weather(request.lat, request.lon)
             
         context = {
             "crop_name": request.crop,
@@ -126,8 +129,9 @@ async def get_farming_advice_endpoint(request: AdviceRequest):
             "journey_id": request.journey_id
         }
         
-        from services.ai_agronomist import ai_agronomist
-        result = await ai_agronomist.generate_advice(context)
+        from services.ai_agronomist import AIAgronomistService
+        agronomist_svc = AIAgronomistService()
+        result = await agronomist_svc.generate_advice(context)
         return result
         
     except Exception as e:

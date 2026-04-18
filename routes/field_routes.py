@@ -1,7 +1,4 @@
 from fastapi import APIRouter, HTTPException
-from services.tracking_service import tracking_service
-from services.weather_service import weather_service
-from services.fake_monitoring_service import fake_monitoring_service
 from models.prediction_models import YieldPredictionRequest
 from utils.logger import logger
 
@@ -14,7 +11,9 @@ async def get_field_decision(field_id: str):
     a highly intelligent AI decision for the field.
     """
     try:
-        progress = tracking_service.get_progress(field_id)
+        from services.tracking_service import TrackingService
+        tracking_svc = TrackingService()
+        progress = tracking_svc.get_progress(field_id)
         
         # Determine crop attributes (fallback gracefully if not fully tracked)
         if "error" not in progress:
@@ -28,10 +27,14 @@ async def get_field_decision(field_id: str):
         # Fetch local weather if we have coordinates
         weather_data = {}
         if "error" not in progress and progress.get("latitude") and progress.get("longitude"):
-            weather_data = weather_service.get_weather(progress["latitude"], progress["longitude"])
+            from services.weather_service import WeatherService
+            weather_svc = WeatherService()
+            weather_data = weather_svc.get_weather(progress["latitude"], progress["longitude"])
         
         # Always fetch live monitoring data
-        monitoring_data = fake_monitoring_service.get_field_monitoring_data(field_id)
+        from services.fake_monitoring_service import FakeMonitoringService
+        monitoring_svc = FakeMonitoringService()
+        monitoring_data = monitoring_svc.get_field_monitoring_data(field_id)
 
         # Build context payload for the Decision Engine
         context = {
@@ -42,8 +45,9 @@ async def get_field_decision(field_id: str):
         }
 
         # Generate intelligent decision (Lazy loaded)
-        from services.ai_decision_engine import ai_decision_engine
-        decision = await ai_decision_engine.generate_decision(context)
+        from services.ai_decision_engine import AIDecisionEngine
+        decision_engine = AIDecisionEngine()
+        decision = await decision_engine.generate_decision(context)
         return decision
 
     except Exception as e:
@@ -64,8 +68,9 @@ async def predict_field_yield(request: YieldPredictionRequest):
         }
         
         # Predict yield (Lazy loaded)
-        from services.yield_prediction_service import yield_prediction_service
-        prediction = await yield_prediction_service.predict_yield(context)
+        from services.yield_prediction_service import YieldPredictionService
+        yield_svc = YieldPredictionService()
+        prediction = await yield_svc.predict_yield(context)
         return prediction
         
     except Exception as e:

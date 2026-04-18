@@ -196,5 +196,4 @@ class AIAgronomistService:
         except Exception as e:
             logger.error(f"Advanced Chat Error: {str(e)}")
             return "I apologize, but I am currently unable to process your request due to a system error. Please try again shortly."
-
-ai_agronomist = AIAgronomistService()
+# Export the class for lazy instantiation inside routes

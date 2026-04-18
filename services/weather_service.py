@@ -39,5 +39,4 @@ class WeatherService:
                 "rain": None,
                 "wind": None
             }
-
-weather_service = WeatherService()
+# Export the class for on-demand initialization

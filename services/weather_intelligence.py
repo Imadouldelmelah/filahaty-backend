@@ -129,5 +129,4 @@ class WeatherIntelligenceService:
         if temp is None: return "Weather data incomplete."
         condition = "Clear" if (rain or 0) == 0 else "Rainy"
         return f"Currently {temp}°C and {condition}."
-
-weather_intelligence = WeatherIntelligenceService()
+# Class exported for on-demand initialization

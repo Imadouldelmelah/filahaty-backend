@@ -1,9 +1,5 @@
-import os
-import requests
 from fastapi import APIRouter, HTTPException, Query
 from models.soil_models import SoilData, MSPRequest
-from services.fake_monitoring_service import fake_monitoring_service
-from services.weather_service import weather_service
 from utils.logger import logger
 
 router = APIRouter(tags=["Crop Prediction"])
@@ -115,48 +111,54 @@ NORTH_AFRICAN_PRIORITY = {
 }
 
 def call_ai(user_prompt: str):
-    try:
-        # Audit data egress
-        logger.info(f"SECURITY_AUDIT: Outgoing AI Egress initiated. Character count: {len(user_prompt)}")
-        
-        key = os.getenv("OPENROUTER_API_KEY")
-        if not key:
-            print("API key missing")
-            return "AI unavailable, please try again later"
-            
-        # Simple sanitization filter check (Defense in depth)
-        sensitive_patterns = ["@", "06", "07", "+213"] # Simple phone/email check
-        if any(p in user_prompt for p in sensitive_patterns):
-             logger.warning("SECURITY_WARNING: Potential PII detected in outgoing prompt. Blocking request.")
-             return "Data security policy prevents processing this prompt."
-
-        response = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {key}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "model": "openai/gpt-4o-mini",
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": "You are an expert agricultural assistant specialized in Algeria farming."
-                    },
-                    {
-                        "role": "user",
-                        "content": user_prompt
-                    }
-                ]
-            },
-            timeout=20
-        )
-        data = response.json()
-        logger.info("SECURITY_AUDIT: AI Egress successful.")
-        return data["choices"][0]["message"]["content"]
-    except Exception as e:
-        logger.error(f"SECURITY_ERROR: AI Egress failed: {str(e)}")
-        return "AI unavailable, please try again later"
+    # Temporarily disabled to check server startup
+    print("AI CALL DISABLED: Returning dummy response")
+    return '{"response": "test ok"}'
+    
+    # import os
+    # import requests
+    # try:
+    #     # Audit data egress
+    #     logger.info(f"SECURITY_AUDIT: Outgoing AI Egress initiated. Character count: {len(user_prompt)}")
+    #     
+    #     key = os.getenv("OPENROUTER_API_KEY")
+    #     if not key:
+    #         print("API key missing")
+    #         return "AI unavailable, please try again later"
+    #         
+    #     # Simple sanitization filter check (Defense in depth)
+    #     sensitive_patterns = ["@", "06", "07", "+213"] # Simple phone/email check
+    #     if any(p in user_prompt for p in sensitive_patterns):
+    #          logger.warning("SECURITY_WARNING: Potential PII detected in outgoing prompt. Blocking request.")
+    #          return "Data security policy prevents processing this prompt."
+    # 
+    #     response = requests.post(
+    #         "https://openrouter.ai/api/v1/chat/completions",
+    #         headers={
+    #             "Authorization": f"Bearer {key}",
+    #             "Content-Type": "application/json"
+    #         },
+    #         json={
+    #             "model": "openai/gpt-4o-mini",
+    #             "messages": [
+    #                 {
+    #                     "role": "system",
+    #                     "content": "You are an expert agricultural assistant specialized in Algeria farming."
+    #                 },
+    #                 {
+    #                     "role": "user",
+    #                     "content": user_prompt
+    #                 }
+    #             ]
+    #         },
+    #         timeout=20
+    #     )
+    #     data = response.json()
+    #     logger.info("SECURITY_AUDIT: AI Egress successful.")
+    #     return data["choices"][0]["message"]["content"]
+    # except Exception as e:
+    #     logger.error(f"SECURITY_ERROR: AI Egress failed: {str(e)}")
+    #     return "AI unavailable, please try again later"
 
 @router.post("/predict")
 def predict_crop(data: SoilData):
@@ -242,12 +244,16 @@ def predict_crop_automatically(
     """
     try:
         # 1. Fetch Monitoring Data (Source of Truth)
-        sensors = fake_monitoring_service.get_field_monitoring_data(field_id)
+        from services.fake_monitoring_service import FakeMonitoringService
+        monitoring_svc = FakeMonitoringService()
+        sensors = monitoring_svc.get_field_monitoring_data(field_id)
         
         # 2. Fetch Weather Data (if location available)
         weather = {"temperature": sensors["temperature"], "humidity": sensors["humidity"], "rain": sensors["rainfall"]}
         if lat is not None and lon is not None:
-             weather = weather_service.get_weather(lat, lon)
+             from services.weather_service import WeatherService
+             weather_svc = WeatherService()
+             weather = weather_svc.get_weather(lat, lon)
         
         # 3. Map to SoilData model
         soil_data = SoilData(

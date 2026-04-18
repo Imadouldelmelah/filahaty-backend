@@ -1,11 +1,24 @@
+print("Starting backend...")
+
 import time
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from config import settings
 from utils.logger import logger
 
-# Import routes
-from routes import prediction, ai_routes, news, iot_routes, agronomy_routes, tracking_routes, agronomist_routes, weather_routes, field_routes, marketplace_routes, unified_ai_routes
+# Wrap risky imports to capture real crash reasons
+try:
+    from routes import (
+        prediction, ai_routes, news, iot_routes, 
+        agronomy_routes, tracking_routes, agronomist_routes, 
+        weather_routes, field_routes, marketplace_routes, unified_ai_routes
+    )
+except Exception as e:
+    print("Import error detected during startup:", str(e))
+    # We don't raise here so the server can attempt to start in degraded mode
+    prediction = ai_routes = news = iot_routes = agronomy_routes = \
+    tracking_routes = agronomist_routes = weather_routes = \
+    field_routes = marketplace_routes = unified_ai_routes = None
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -44,17 +57,17 @@ async def log_requests(request: Request, call_next):
 
 # Include Routers with stability guard
 try:
-    app.include_router(prediction.router)
-    app.include_router(ai_routes.router)
-    app.include_router(news.router)
-    app.include_router(iot_routes.router)
-    app.include_router(agronomy_routes.router)
-    app.include_router(tracking_routes.router)
-    app.include_router(agronomist_routes.router)
-    app.include_router(weather_routes.router)
-    app.include_router(field_routes.router)
-    app.include_router(marketplace_routes.router)
-    app.include_router(unified_ai_routes.router)
+    if prediction: app.include_router(prediction.router)
+    if ai_routes: app.include_router(ai_routes.router)
+    if news: app.include_router(news.router)
+    if iot_routes: app.include_router(iot_routes.router)
+    if agronomy_routes: app.include_router(agronomy_routes.router)
+    if tracking_routes: app.include_router(tracking_routes.router)
+    if agronomist_routes: app.include_router(agronomist_routes.router)
+    if weather_routes: app.include_router(weather_routes.router)
+    if field_routes: app.include_router(field_routes.router)
+    if marketplace_routes: app.include_router(marketplace_routes.router)
+    if unified_ai_routes: app.include_router(unified_ai_routes.router)
 except Exception as e:
     logger.error(f"STARTUP_ERROR: Failed to include some routers: {str(e)}")
 

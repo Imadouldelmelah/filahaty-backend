@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException
 from models.marketplace_models import MarketplaceItem, MarketplaceItemCreate
-from services.marketplace_service import marketplace_service
 from typing import List
 from utils.logger import logger
 
@@ -12,7 +11,9 @@ async def add_marketplace_item(item: MarketplaceItemCreate):
     Allows a farmer to list a crop for sale.
     """
     try:
-        new_item = marketplace_service.add_item(item.model_dump())
+        from services.marketplace_service import MarketplaceService
+        marketplace_svc = MarketplaceService()
+        new_item = marketplace_svc.add_item(item.model_dump())
         logger.info(f"Marketplace item added: {new_item['crop_name']} by {new_item['farmer_name']}")
         return new_item
     except Exception as e:
@@ -25,7 +26,9 @@ async def list_marketplace_items():
     Allows buyers to browse all products for sale.
     """
     try:
-        return marketplace_service.list_items()
+        from services.marketplace_service import MarketplaceService
+        marketplace_svc = MarketplaceService()
+        return marketplace_svc.list_items()
     except Exception as e:
         logger.error(f"Error listing marketplace items: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to retrieve marketplace items.")

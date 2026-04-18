@@ -1,5 +1,4 @@
 import random
-from services.health_score_service import field_health_score_service
 
 class FakeMonitoringService:
     """
@@ -29,12 +28,13 @@ class FakeMonitoringService:
             "rainfall": round(random.uniform(0.0, 150.0), 1)
         }
         
-        # Calculate derived health score
-        health_assessment = field_health_score_service.calculate_health_score(data)
+        # Calculate derived health score (Lazy loaded)
+        from services.health_score_service import FieldHealthScoreService
+        health_svc = FieldHealthScoreService()
+        health_assessment = health_svc.calculate_health_score(data)
         data["health_score"] = health_assessment["score"]
         data["health_status"] = health_assessment["status"]
         
         return data
 
-# Singleton instance
-fake_monitoring_service = FakeMonitoringService()
+# Class exported for on-demand initialization

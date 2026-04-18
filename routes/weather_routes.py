@@ -1,7 +1,4 @@
 from fastapi import APIRouter, HTTPException, Query
-from services.weather_service import weather_service
-from services.weather_intelligence import weather_intelligence
-from services.fake_monitoring_service import fake_monitoring_service
 from utils.logger import logger
 
 router = APIRouter(prefix="/weather", tags=["Weather"])
@@ -15,7 +12,9 @@ async def get_weather_endpoint(
     Exposes real-time weather data for a specific location.
     """
     try:
-        weather_data = weather_service.get_weather(lat, lon)
+        from services.weather_service import WeatherService
+        weather_svc = WeatherService()
+        weather_data = weather_svc.get_weather(lat, lon)
         
         # Check if we got valid data
         if weather_data["temperature"] is None:
@@ -35,12 +34,19 @@ async def get_weather_insights_endpoint(
     Returns weather data combined with agricultural decision logic.
     """
     try:
-        weather_data = weather_service.get_weather(lat, lon)
+        from services.weather_service import WeatherService
+        weather_svc = WeatherService()
+        weather_data = weather_svc.get_weather(lat, lon)
         if weather_data["temperature"] is None:
             raise HTTPException(status_code=503, detail="Weather service unavailable")
             
-        monitoring_data = fake_monitoring_service.get_field_monitoring_data()
-        insights = weather_intelligence.analyze_weather(weather_data, monitoring_data)
+        from services.fake_monitoring_service import FakeMonitoringService
+        monitoring_svc = FakeMonitoringService()
+        monitoring_data = monitoring_svc.get_field_monitoring_data()
+        
+        from services.weather_intelligence import WeatherIntelligenceService
+        weather_intel = WeatherIntelligenceService()
+        insights = weather_intel.analyze_weather(weather_data, monitoring_data)
         
         return {
             "weather": weather_data,
@@ -61,12 +67,19 @@ async def get_weather_alerts_endpoint(
     Returns specific, crop-aware farming alerts based on weather and stage.
     """
     try:
-        weather_data = weather_service.get_weather(lat, lon)
+        from services.weather_service import WeatherService
+        weather_svc = WeatherService()
+        weather_data = weather_svc.get_weather(lat, lon)
         if weather_data["temperature"] is None:
             raise HTTPException(status_code=503, detail="Weather service unavailable")
             
-        monitoring_data = fake_monitoring_service.get_field_monitoring_data()
-        alerts = weather_intelligence.generate_smart_alerts(weather_data, crop, stage, monitoring_data)
+        from services.fake_monitoring_service import FakeMonitoringService
+        monitoring_svc = FakeMonitoringService()
+        monitoring_data = monitoring_svc.get_field_monitoring_data()
+        
+        from services.weather_intelligence import WeatherIntelligenceService
+        weather_intel = WeatherIntelligenceService()
+        alerts = weather_intel.generate_smart_alerts(weather_data, crop, stage, monitoring_data)
         return {"alerts": alerts}
     except Exception as e:
         logger.error(f"Weather Alerts Error: {str(e)}")

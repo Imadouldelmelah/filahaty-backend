@@ -121,5 +121,4 @@ class TrackingService:
         
         # Fallback if beyond defined stages
         return stages[-1]["name"] if day > int(stages[-1]["days"].split("-")[-1]) else "Seed"
-
-tracking_service = TrackingService()
+# Export the class for on-demand initialization

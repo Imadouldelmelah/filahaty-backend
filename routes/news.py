@@ -1,4 +1,3 @@
-import requests
 from fastapi import APIRouter, HTTPException
 from config import settings
 from utils.logger import logger
@@ -11,6 +10,7 @@ def get_agricultural_news():
     Proxies and validates requests to NewsAPI to ensure zero data leakage
     and protect the API key.
     """
+    import requests
     if not settings.NEWS_API_KEY:
         raise HTTPException(status_code=503, detail="News service currently unavailable.")
     

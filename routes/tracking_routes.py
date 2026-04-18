@@ -1,9 +1,5 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from services.tracking_service import tracking_service
-from services.ai_agronomist import ai_agronomist
-from services.weather_service import weather_service
-from services.fake_monitoring_service import fake_monitoring_service
 from utils.logger import logger
 
 router = APIRouter(prefix="/tracking", tags=["Crop Tracking"])
@@ -21,7 +17,9 @@ class ActionRecordRequest(BaseModel):
 @router.post("/start")
 async def start_farming_journey_endpoint(request: JourneyStartRequest):
     try:
-        journey_id = tracking_service.start_journey(
+        from services.tracking_service import TrackingService
+        tracking_svc = TrackingService()
+        journey_id = tracking_svc.start_journey(
             request.crop, 
             request.start_date,
             request.lat,
@@ -33,7 +31,9 @@ async def start_farming_journey_endpoint(request: JourneyStartRequest):
 
 @router.get("/progress/{journey_id}")
 async def get_farming_progress_endpoint(journey_id: str):
-    result = tracking_service.get_progress(journey_id)
+    from services.tracking_service import TrackingService
+    tracking_svc = TrackingService()
+    result = tracking_svc.get_progress(journey_id)
     if "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])
     return result
@@ -43,7 +43,9 @@ async def record_farming_action_endpoint(request: ActionRecordRequest):
     """
     Endpoint to record a completed farming action.
     """
-    result = tracking_service.record_action(request.journey_id, request.action)
+    from services.tracking_service import TrackingService
+    tracking_svc = TrackingService()
+    result = tracking_svc.record_action(request.journey_id, request.action)
     if "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])
     return result
@@ -53,17 +55,23 @@ async def get_journey_guidance_endpoint(journey_id: str):
     """
     Expert guidance based on journey progress + AI enhancement.
     """
-    progress = tracking_service.get_progress(journey_id)
+    from services.tracking_service import TrackingService
+    tracking_svc = TrackingService()
+    progress = tracking_svc.get_progress(journey_id)
     if "error" in progress:
         raise HTTPException(status_code=404, detail=progress["error"])
     
     # Fetch real-time weather based on coordinates
     weather_data = None
     if progress.get("latitude") and progress.get("longitude"):
-        weather_data = weather_service.get_weather(progress["latitude"], progress["longitude"])
+        from services.weather_service import WeatherService
+        weather_svc = WeatherService()
+        weather_data = weather_svc.get_weather(progress["latitude"], progress["longitude"])
     
     # Fetch real-time monitoring data for the field
-    monitoring_data = fake_monitoring_service.get_field_monitoring_data(journey_id)
+    from services.fake_monitoring_service import FakeMonitoringService
+    monitoring_svc = FakeMonitoringService()
+    monitoring_data = monitoring_svc.get_field_monitoring_data(journey_id)
     
     # context for AI
     context = {
@@ -77,7 +85,9 @@ async def get_journey_guidance_endpoint(journey_id: str):
         "field_size": "Standard"
     }
     
-    advice = await ai_agronomist.generate_advice(context)
+    from services.ai_agronomist import AIAgronomistService
+    agronomist_svc = AIAgronomistService()
+    advice = await agronomist_svc.generate_advice(context)
     return {
         "progress": progress,
         "ai_advice": advice

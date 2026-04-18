@@ -10,8 +10,9 @@ async def get_unified_intelligence_endpoint(field_id: str):
     health, decisions, yield predictions, and expert advice for a field.
     """
     try:
-        from services.unified_ai_brain import unified_ai_brain
-        result = await unified_ai_brain.get_unified_intelligence(field_id)
+        from services.unified_ai_brain import UnifiedAIBrain
+        brain = UnifiedAIBrain()
+        result = await brain.get_unified_intelligence(field_id)
         if "error" in result:
              raise HTTPException(status_code=500, detail=result["error"])
         return result

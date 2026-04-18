@@ -1,11 +1,4 @@
 import asyncio
-from services.ai_agronomist import ai_agronomist
-from services.ai_decision_engine import ai_decision_engine
-from services.health_score_service import field_health_score_service
-from services.fake_monitoring_service import fake_monitoring_service
-from services.tracking_service import tracking_service
-from services.weather_service import weather_service
-from services.yield_prediction_service import yield_prediction_service
 from utils.logger import logger
 
 class UnifiedAIBrain:
@@ -20,9 +13,26 @@ class UnifiedAIBrain:
         try:
             logger.info(f"UNIFIED_BRAIN: Initiating central intelligence synthesis for {field_id}")
             
+            # Local instantiations for lazy loading
+            from services.tracking_service import TrackingService
+            from services.fake_monitoring_service import FakeMonitoringService
+            from services.weather_service import WeatherService
+            from services.health_score_service import FieldHealthScoreService
+            from services.ai_decision_engine import AIDecisionEngine
+            from services.ai_agronomist import AIAgronomistService
+            from services.yield_prediction_service import YieldPredictionService
+            
+            tracking_svc = TrackingService()
+            monitoring_svc = FakeMonitoringService()
+            weather_svc = WeatherService()
+            health_svc = FieldHealthScoreService()
+            decision_engine = AIDecisionEngine()
+            agronomist_svc = AIAgronomistService()
+            yield_svc = YieldPredictionService()
+
             # 1. Fetch Contextual Data
-            progress = tracking_service.get_progress(field_id)
-            monitoring_data = fake_monitoring_service.get_field_monitoring_data(field_id)
+            progress = tracking_svc.get_progress(field_id)
+            monitoring_data = monitoring_svc.get_field_monitoring_data(field_id)
             
             crop = progress.get("crop", "Generic Crop")
             stage = progress.get("stage", "Vegetative Growth")
@@ -31,10 +41,10 @@ class UnifiedAIBrain:
             
             weather_data = {}
             if lat and lon:
-                weather_data = weather_service.get_weather(lat, lon)
+                weather_data = weather_svc.get_weather(lat, lon)
             
             # 2. Run Deterministic Health Assessment
-            health_report = field_health_score_service.calculate_health_score(monitoring_data, stage)
+            health_report = health_svc.calculate_health_score(monitoring_data, stage)
             
             # 3. Synchronize AI Analysis (Run concurrently for performance)
             context = {
@@ -47,9 +57,9 @@ class UnifiedAIBrain:
             }
             
             # Concurrent execution of heavy AI tasks
-            decision_task = ai_decision_engine.generate_decision(context)
-            advice_task = ai_agronomist.generate_advice(context)
-            yield_task = yield_prediction_service.predict_yield(context)
+            decision_task = decision_engine.generate_decision(context)
+            advice_task = agronomist_svc.generate_advice(context)
+            yield_task = yield_svc.predict_yield(context)
             
             decision, advice, yield_prediction = await asyncio.gather(
                 decision_task, advice_task, yield_task
@@ -83,5 +93,4 @@ class UnifiedAIBrain:
                 "error": "Central intelligence core is temporarily overloaded.",
                 "status": "partial_data"
             }
-
-unified_ai_brain = UnifiedAIBrain()
+# Export the class for lazy instantiation inside routes

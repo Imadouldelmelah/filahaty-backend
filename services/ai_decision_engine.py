@@ -93,5 +93,4 @@ class AIDecisionEngine:
                 "reason": "The AI service is temporarily unavailable or returned malformed data.",
                 "action": "Proceed with standard agricultural practices for your crop stage."
             }
-
-ai_decision_engine = AIDecisionEngine()
+# Export the class for lazy instantiation inside routes

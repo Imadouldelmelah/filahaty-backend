@@ -69,5 +69,4 @@ class YieldPredictionService:
                     "Monitor soil nutrients to maintain optimal growth baseline."
                 ]
             }
-
-yield_prediction_service = YieldPredictionService()
+# Export the class for lazy instantiation inside routes

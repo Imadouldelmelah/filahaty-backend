@@ -55,5 +55,4 @@ class DiseaseDetectionService:
                 "confidence": "Low",
                 "solution": "We could not securely process this image due to a system error. Please consult a local agronomist."
             }
-
-disease_detector_service = DiseaseDetectionService()
+# Export the class for lazy instantiation inside routes
