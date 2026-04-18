@@ -144,8 +144,8 @@ def call_ai(prompt):
         return "AI temporarily unavailable"
 
 @router.post("/predict")
-def predict_crop(data: SoilData):
-    logger.info(f"--- RULE-BASED ENGINE START ---")
+async def predict_crop(data: SoilData):
+    logger.info(f"--- CROP RECOMMENDATION ENGINE START ---")
     logger.info(f"INPUT DATA RECEIVED: {data.model_dump()}")
     
     try:
@@ -182,38 +182,35 @@ def predict_crop(data: SoilData):
         confidence = confidence_mapping.get(max_score, 10)
         img_url = CROP_IMAGES.get(best_crop, CROP_IMAGES["Default"])
         
-        explanation = "Based on precise soil constraints, " + best_crop + " achieves a " + str(confidence) + "% viability match."
+        reason = "Based on precise soil constraints, " + best_crop + " achieves a " + str(confidence) + "% viability match."
         
         if os.getenv("OPENROUTER_API_KEY"):
-            explanation_prompt = f"""
-    You are an agronomy expert. We have selected {best_crop} for the following North African soil and climate conditions:
-    - Nitrogen: {data.nitrogen}
-    - Phosphorus: {data.phosphorus}
-    - Potassium: {data.potassium}
-    - Temperature: {data.temperature}°C
-    - Humidity: {data.humidity}%
-    - pH: {data.ph}
-    - Rainfall: {data.rainfall}mm
-    
-    Task: Explain why this crop is suitable based on these specific soil and climate parameters.
-    Keep your answer under 3 sentences. Do not use markdown. Do not recommend other crops.
-    """     
-            explanation = call_ai(explanation_prompt)
+            from services.crop_recommendation_service import CropRecommendationService
+            crop_svc = CropRecommendationService()
+            ai_rec = await crop_svc.generate_recommendation(data.model_dump())
+            
+            # Use AI recommendation if it provides one, otherwise stick to rule-based fallback
+            best_crop = ai_rec.get("crop", best_crop)
+            confidence = ai_rec.get("confidence", confidence)
+            reason = ai_rec.get("reason", reason)
             
         return {
             "crop": best_crop,
-            "confidence": confidence,
-            "explanation": explanation,
+            "confidence": str(confidence),
+            "reason": reason,
+            "explanation": reason, # Backward compatibility
             "debug_scores": debug_scores,
             "image_url": img_url
         }
     except Exception as e:
-        logger.error(f"ENGINE_ERROR: Recommendation logic failed: {str(e)}")
-        # Raise HTTPException for FastAPI to handle, or return a consistent error JSON
+        logger.error(f"CRITICAL_PREDICTION_ERROR: {str(e)}")
+        # Task 1 & 2: Never return 500, always return valid JSON fallback
         return {
-            "error": "Internal recommendation engine error",
-            "details": str(e),
-            "status": "fail"
+            "crop": "wheat",
+            "confidence": "low",
+            "reason": "Our recommendation engine is facing a temporary technical issue. Falling back to standard Algerian wheat profile.",
+            "explanation": "fallback due to server error",
+            "status": "fallback"
         }
 
 @router.get("/predict/auto")
@@ -250,7 +247,7 @@ def predict_crop_automatically(
         )
         
         # 4. Use existing prediction logic
-        return predict_crop(soil_data)
+        return await predict_crop(soil_data)
         
     except Exception as e:
         logger.error(f"AUTO_PREDICT_ERROR: {str(e)}")
