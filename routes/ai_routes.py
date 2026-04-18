@@ -3,8 +3,6 @@ import requests
 import base64
 from fastapi import APIRouter, HTTPException, UploadFile, File
 from models.chat_models import ChatRequest, ChatResponse, AdvancedChatRequest
-from services.ai_agronomist import ai_agronomist
-from services.disease_detector import disease_detector_service
 from services.weather_service import weather_service
 from pydantic import BaseModel
 from typing import List
@@ -14,12 +12,16 @@ router = APIRouter(prefix="/ai", tags=["AI Assistant"])
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat_with_ai_endpoint(request: ChatRequest):
-    message = request.message
+    key = os.getenv("OPENROUTER_API_KEY")
+    if not key:
+        print("API key missing")
+        return ChatResponse(response="AI assistant unavailable")
+        
     try:
         response = requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
             headers={
-                "Authorization": f"Bearer {os.getenv('OPENROUTER_API_KEY')}",
+                "Authorization": f"Bearer {key}",
                 "Content-Type": "application/json"
             },
             json={
@@ -62,6 +64,7 @@ async def advanced_chat_with_ai_endpoint(request: AdvancedChatRequest):
             "monitoring_data": request.monitoring_data
         }
         
+        from services.ai_agronomist import ai_agronomist
         response_text = await ai_agronomist.generate_advanced_chat(context, request.message)
         return ChatResponse(response=response_text)
         
@@ -86,6 +89,7 @@ async def analyze_plant_image(file: UploadFile = File(...)):
         mime_type = file.content_type or "image/jpeg"
         
         # Analyze using disease detector service
+        from services.disease_detector import disease_detector_service
         result = await disease_detector_service.analyze_crop_image(base64_image, mime_type)
         return result
         
@@ -122,6 +126,7 @@ async def get_farming_advice_endpoint(request: AdviceRequest):
             "journey_id": request.journey_id
         }
         
+        from services.ai_agronomist import ai_agronomist
         result = await ai_agronomist.generate_advice(context)
         return result
         

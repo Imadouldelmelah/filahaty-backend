@@ -119,6 +119,11 @@ def call_ai(user_prompt: str):
         # Audit data egress
         logger.info(f"SECURITY_AUDIT: Outgoing AI Egress initiated. Character count: {len(user_prompt)}")
         
+        key = os.getenv("OPENROUTER_API_KEY")
+        if not key:
+            print("API key missing")
+            return "AI unavailable, please try again later"
+            
         # Simple sanitization filter check (Defense in depth)
         sensitive_patterns = ["@", "06", "07", "+213"] # Simple phone/email check
         if any(p in user_prompt for p in sensitive_patterns):
@@ -128,7 +133,7 @@ def call_ai(user_prompt: str):
         response = requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
             headers={
-                "Authorization": f"Bearer {os.getenv('OPENROUTER_API_KEY')}",
+                "Authorization": f"Bearer {key}",
                 "Content-Type": "application/json"
             },
             json={

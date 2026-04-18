@@ -10,15 +10,20 @@ load_dotenv()
 class GeminiService:
 
     def __init__(self):
-        # API key loading from environment variable ONLY
-        self.api_key = os.getenv("OPENROUTER_API_KEY")
-        if not self.api_key:
-            logger.error("Missing OPENROUTER_API_KEY environment variable")
-            raise ValueError("Missing OPENROUTER_API_KEY")
-
-        print("OpenRouter client initialized")
+        # API key loading from environment variable
+        key = os.getenv("OPENROUTER_API_KEY")
+        if not key:
+            print("API key missing")
+            self.api_key = None
+        else:
+            self.api_key = key
+            print("OpenRouter client initialized")
 
     async def generate(self, message: str):
+        if not self.api_key:
+            logger.error("AI call failed: Missing API Key")
+            return "AI service unavailable (Missing API Key)"
+            
         # Logging for diagnostic visibility in Render
         print("Sending prompt to API:", message)
         
@@ -54,6 +59,10 @@ class GeminiService:
             return "AI unavailable, please try again later"
 
     async def generate_vision(self, prompt: str, base64_image: str, mime_type: str = "image/jpeg"):
+        if not self.api_key:
+            logger.error("AI vision call failed: Missing API Key")
+            return "AI vision analysis unavailable (Missing API Key)"
+            
         print("Sending vision prompt to API")
         
         try:

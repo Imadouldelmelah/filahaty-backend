@@ -2,8 +2,6 @@ from fastapi import APIRouter, HTTPException
 from services.tracking_service import tracking_service
 from services.weather_service import weather_service
 from services.fake_monitoring_service import fake_monitoring_service
-from services.ai_decision_engine import ai_decision_engine
-from services.yield_prediction_service import yield_prediction_service
 from models.prediction_models import YieldPredictionRequest
 from utils.logger import logger
 
@@ -43,7 +41,8 @@ async def get_field_decision(field_id: str):
             "monitoring_data": monitoring_data
         }
 
-        # Generate intelligent decision
+        # Generate intelligent decision (Lazy loaded)
+        from services.ai_decision_engine import ai_decision_engine
         decision = await ai_decision_engine.generate_decision(context)
         return decision
 
@@ -64,6 +63,8 @@ async def predict_field_yield(request: YieldPredictionRequest):
             "weather_data": request.weather_data
         }
         
+        # Predict yield (Lazy loaded)
+        from services.yield_prediction_service import yield_prediction_service
         prediction = await yield_prediction_service.predict_yield(context)
         return prediction
         
