@@ -32,7 +32,7 @@ class UnifiedAIBrain:
 
             # 1. Fetch Contextual Data
             progress = tracking_svc.get_progress(field_id)
-            monitoring_data = monitoring_svc.get_field_monitoring_data(field_id)
+            monitoring_data = monitoring_svc.get_fake_monitoring_data(field_id)
             
             crop = progress.get("crop", "Generic Crop")
             stage = progress.get("stage", "Vegetative Growth")
@@ -100,7 +100,11 @@ class UnifiedAIBrain:
                 "advice": {"advice": "Our real-time analysis is currently limited. Please follow your standard agricultural schedule.", "actions": ["Check for pests", "Verify irrigation"]},
                 "context": {
                     "weather": {"temperature": 25.0, "humidity": 60.0, "condition": "Standard"},
-                    "sensors": {"N": 50, "P": 40, "K": 40, "temperature": 25.0, "humidity": 60.0, "ph": 6.5, "rainfall": 500.0}
+                    "sensors": {
+                        "nitrogen": 50, "phosphorus": 40, "potassium": 40, 
+                        "temperature": 25.0, "humidity": 60.0, "ph": 6.5, "rainfall": 500.0,
+                        "soil_moisture": 65
+                    }
                 },
                 "status": "fallback"
             }

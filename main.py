@@ -11,14 +11,16 @@ try:
     from routes import (
         prediction, ai_routes, news, 
         agronomy_routes, tracking_routes, agronomist_routes, 
-        weather_routes, field_routes, marketplace_routes, unified_ai_routes
+        weather_routes, field_routes, marketplace_routes, unified_ai_routes,
+        monitoring_routes
     )
 except Exception as e:
     print("Import error detected during startup:", str(e))
     # We don't raise here so the server can attempt to start in degraded mode
     prediction = ai_routes = news = agronomy_routes = \
     tracking_routes = agronomist_routes = weather_routes = \
-    field_routes = marketplace_routes = unified_ai_routes = None
+    field_routes = marketplace_routes = unified_ai_routes = \
+    monitoring_routes = None
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -67,6 +69,7 @@ try:
     if field_routes: app.include_router(field_routes.router)
     if marketplace_routes: app.include_router(marketplace_routes.router)
     if unified_ai_routes: app.include_router(unified_ai_routes.router)
+    if monitoring_routes: app.include_router(monitoring_routes.router)
 except Exception as e:
     logger.error(f"STARTUP_ERROR: Failed to include some routers: {str(e)}")
 

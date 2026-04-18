@@ -71,7 +71,7 @@ async def get_journey_guidance_endpoint(journey_id: str):
     # Fetch real-time monitoring data for the field
     from services.fake_monitoring_service import FakeMonitoringService
     monitoring_svc = FakeMonitoringService()
-    monitoring_data = monitoring_svc.get_field_monitoring_data(journey_id)
+    monitoring_data = monitoring_svc.get_fake_monitoring_data(journey_id)
     
     # context for AI
     context = {

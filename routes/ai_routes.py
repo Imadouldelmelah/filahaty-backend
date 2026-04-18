@@ -72,7 +72,7 @@ async def advanced_chat_with_ai_endpoint(request: AdvancedChatRequest):
         from services.fake_monitoring_service import FakeMonitoringService
         monitoring_svc = FakeMonitoringService()
         field_id = request.field_id or "default_field"
-        monitoring_data = monitoring_svc.get_field_monitoring_data(field_id)
+        monitoring_data = monitoring_svc.get_fake_monitoring_data(field_id)
         
         context = {
             "crop_name": request.crop,

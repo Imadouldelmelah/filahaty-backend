@@ -4,43 +4,60 @@ class FakeMonitoringService:
     """
     Simulates real-time IoT sensor data for fields and crops.
     Providing a single source of truth for monitoring data across the platform.
+    Now standardized to use long-form sensor names (nitrogen, phosphorus, potassium).
     """
     
-    def get_field_monitoring_data(self, field_id: str = "default"):
+    def get_fake_monitoring_data(self, field_id: str = "default_field"):
         """
-        Returns randomized but realistically bound set of monitoring data.
-        
-        Args:
-            field_id (str): ID of the field to monitor.
-            
-        Returns:
-            dict: {temperature, humidity, soil_moisture, ph, N, P, K, rainfall}
+        Returns dynamic simulated telemetry data with a unified schema.
+        This is the single source of truth for IoT data across the platform.
+        Wrapped in a global try-except to ensure 'Always Available' status.
         """
-        data = {
-            "field_id": field_id,
-            "temperature": round(random.uniform(18.0, 38.0), 1),
-            "humidity": round(random.uniform(45.0, 92.0), 1),
-            "soil_moisture": round(random.uniform(25.0, 75.0), 1),
-            "ph": round(random.uniform(5.8, 7.2), 1),
-            "N": random.randint(40, 95),
-            "P": random.randint(25, 55),
-            "K": random.randint(20, 45),
-            "rainfall": round(random.uniform(0.0, 150.0), 1)
-        }
-        
-        # Calculate derived health score (Indestructible integration)
         try:
-            from services.health_score_service import FieldHealthScoreService
-            health_svc = FieldHealthScoreService()
-            health_assessment = health_svc.calculate_health_score(data)
-            data["health_score"] = health_assessment["score"]
-            data["health_status"] = health_assessment["status"]
+            data = {
+                "field_id": field_id,
+                "soil_moisture": random.randint(50, 80),
+                "temperature": random.randint(18, 30),
+                "humidity": random.randint(50, 90),
+                "ph": round(random.uniform(5.5, 7.5), 1),
+                "nitrogen": random.randint(20, 60),
+                "phosphorus": random.randint(20, 50),
+                "potassium": random.randint(20, 50),
+                "rainfall": round(random.uniform(0.0, 150.0), 1)
+            }
+            
+            # Calculate derived health score (Indestructible integration)
+            try:
+                from services.health_score_service import FieldHealthScoreService
+                health_svc = FieldHealthScoreService()
+                health_assessment = health_svc.calculate_health_score(data)
+                data["health_score"] = health_assessment["score"]
+                data["health_status"] = health_assessment["status"]
+            except Exception as e:
+                from utils.logger import logger
+                logger.error(f"Health score calculation failed: {str(e)}")
+                data["health_score"] = 85
+                data["health_status"] = "Healthy"
+            
+            return data
+            
         except Exception as e:
             from utils.logger import logger
-            logger.error(f"Health score calculation failed in FakeMonitoringService: {str(e)}")
-            data["health_score"] = 85
-            data["health_status"] = "Healthy"
-        
-        return data
+            logger.error(f"CRITICAL_MONITORING_FAILURE: {str(e)}")
+            # Guaranteed stable fallback
+            return {
+                "field_id": field_id,
+                "soil_moisture": 65,
+                "temperature": 25,
+                "humidity": 70,
+                "ph": 6.5,
+                "nitrogen": 40,
+                "phosphorus": 35,
+                "potassium": 35,
+                "rainfall": 50.0,
+                "health_score": 80,
+                "health_status": "Stable",
+                "status": "fallback"
+            }
 
 # Class exported for on-demand initialization

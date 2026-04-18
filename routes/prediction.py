@@ -223,10 +223,10 @@ async def predict_crop_automatically(
     Standardized 'Crop Suggestion' powered by real-time field sensors and weather.
     """
     try:
-        # 1. Fetch Monitoring Data (Source of Truth)
+        # 1. Fetch Monitoring Data (Single Source of Truth)
         from services.fake_monitoring_service import FakeMonitoringService
         monitoring_svc = FakeMonitoringService()
-        sensors = monitoring_svc.get_field_monitoring_data(field_id)
+        sensors = monitoring_svc.get_fake_monitoring_data(field_id)
         
         # 2. Fetch Weather Data (if location available)
         weather = {"temperature": sensors["temperature"], "humidity": sensors["humidity"], "rain": sensors["rainfall"]}
@@ -235,11 +235,11 @@ async def predict_crop_automatically(
              weather_svc = WeatherService()
              weather = weather_svc.get_weather(lat, lon)
         
-        # 3. Map to SoilData model
+        # 3. Map to SoilData model (Using standardized long-form keys)
         soil_data = SoilData(
-            nitrogen=sensors["N"],
-            phosphorus=sensors["P"],
-            potassium=sensors["K"],
+            nitrogen=sensors["nitrogen"],
+            phosphorus=sensors["phosphorus"],
+            potassium=sensors["potassium"],
             temperature=weather["temperature"] or sensors["temperature"],
             humidity=weather["humidity"] or sensors["humidity"],
             ph=sensors["ph"],
@@ -257,7 +257,7 @@ async def predict_crop_automatically(
         logger.error(f"AUTO_PREDICT_ERROR: {str(e)}")
         # Never fail: Return a standard fallback for stability
         fallback_sensors = {
-            "N": 50, "P": 40, "K": 40, 
+            "nitrogen": 50, "phosphorus": 40, "potassium": 40, 
             "temperature": 25.0, "humidity": 60.0, 
             "ph": 6.5, "rainfall": 500.0
         }

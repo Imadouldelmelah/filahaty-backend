@@ -27,7 +27,7 @@ async def get_agronomist_advice_endpoint(context: AgronomistContext):
         from services.fake_monitoring_service import FakeMonitoringService
         monitoring_svc = FakeMonitoringService()
         field_id = context_dict.get("field_id", "default_field")
-        context_dict["monitoring_data"] = monitoring_svc.get_field_monitoring_data(field_id)
+        context_dict["monitoring_data"] = monitoring_svc.get_fake_monitoring_data(field_id)
         
         from services.ai_agronomist import AIAgronomistService
         agronomist_svc = AIAgronomistService()

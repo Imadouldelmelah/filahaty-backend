@@ -42,7 +42,7 @@ async def get_weather_insights_endpoint(
             
         from services.fake_monitoring_service import FakeMonitoringService
         monitoring_svc = FakeMonitoringService()
-        monitoring_data = monitoring_svc.get_field_monitoring_data()
+        monitoring_data = monitoring_svc.get_fake_monitoring_data()
         
         from services.weather_intelligence import WeatherIntelligenceService
         weather_intel = WeatherIntelligenceService()
@@ -75,7 +75,7 @@ async def get_weather_alerts_endpoint(
             
         from services.fake_monitoring_service import FakeMonitoringService
         monitoring_svc = FakeMonitoringService()
-        monitoring_data = monitoring_svc.get_field_monitoring_data()
+        monitoring_data = monitoring_svc.get_fake_monitoring_data()
         
         from services.weather_intelligence import WeatherIntelligenceService
         weather_intel = WeatherIntelligenceService()

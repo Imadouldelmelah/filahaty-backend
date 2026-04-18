@@ -34,7 +34,7 @@ async def get_field_decision(field_id: str):
         # Always fetch live monitoring data
         from services.fake_monitoring_service import FakeMonitoringService
         monitoring_svc = FakeMonitoringService()
-        monitoring_data = monitoring_svc.get_field_monitoring_data(field_id)
+        monitoring_data = monitoring_svc.get_fake_monitoring_data(field_id)
 
         # Build context payload for the Decision Engine
         context = {
@@ -64,7 +64,7 @@ async def predict_field_yield(request: YieldPredictionRequest):
         from services.fake_monitoring_service import FakeMonitoringService
         monitoring_svc = FakeMonitoringService()
         field_id = request.field_id or "default_field"
-        monitoring_data = monitoring_svc.get_field_monitoring_data(field_id)
+        monitoring_data = monitoring_svc.get_fake_monitoring_data(field_id)
         
         context = {
             "crop_name": request.crop_name,
