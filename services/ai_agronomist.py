@@ -151,4 +151,50 @@ class AIAgronomistService:
                 "actions": ["Check soil moisture", "Inspect for common pests"]
             }
 
+    async def generate_advanced_chat(self, context: dict, user_message: str) -> str:
+        """
+        Advanced Context-Aware Chat Assistant.
+        Acts as a supportive, step-by-step agronomist answering direct questions.
+        """
+        crop_name = context.get('crop_name', 'Unknown')
+        current_stage = context.get('current_stage', 'Unknown')
+        weather_data = context.get('weather_data')
+        monitoring_data = context.get('monitoring_data')
+        soil = context.get('soil', 'Unknown')
+        
+        system_prompt = f"""
+        You are Filahaty AI, a highly advanced agricultural chat assistant. 
+        You act like a real, experienced agronomist explaining things to a farmer.
+        Keep your language Simple, Clear, and Practical. Do NOT use markdown code blocks or structured JSON responses. Simply write conversationally.
+        
+        FARMER'S CURRENT CONTEXT:
+        - Crop: {crop_name}
+        - Growth Stage: {current_stage}
+        - Soil Type: {soil}
+        
+        WEATHER:
+        {weather_data if weather_data else 'No live weather data provided.'}
+        
+        FIELD MONITORING SENSORS:
+        {monitoring_data if monitoring_data else 'No live sensor data provided.'}
+        
+        YOUR INSTRUCTIONS:
+        1. Answer the farmer's question directly and politely.
+        2. Give step-by-step, actionable advice.
+        3. Use the provided context to explain WHY your advice is correct.
+        4. Focus exclusively on problem solving and optimizing their farm operation based directly on their real-time sensor/weather context if applicable.
+        """
+        
+        user_prompt = f"Farmer says: {user_message}"
+        
+        full_prompt = f"{system_prompt}\n\n{user_prompt}"
+        
+        try:
+            logger.info(f"Generating advanced chat response for {crop_name}")
+            raw_response = await self._ai.generate(full_prompt)
+            return raw_response.strip()
+        except Exception as e:
+            logger.error(f"Advanced Chat Error: {str(e)}")
+            return "I apologize, but I am currently unable to process your request due to a system error. Please try again shortly."
+
 ai_agronomist = AIAgronomistService()

@@ -52,3 +52,43 @@ class GeminiService:
             # Capture real error for debugging
             print("API error:", str(e))
             return "AI unavailable, please try again later"
+
+    async def generate_vision(self, prompt: str, base64_image: str, mime_type: str = "image/jpeg"):
+        print("Sending vision prompt to API")
+        
+        try:
+            url = "https://openrouter.ai/api/v1/chat/completions"
+            headers = {
+                "Authorization": "Bearer " + self.api_key,
+                "Content-Type": "application/json"
+            }
+            body = {
+                "model": "openai/gpt-4o-mini",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": prompt
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:{mime_type};base64,{base64_image}"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+            
+            response = requests.post(url, headers=headers, json=body)
+            response.raise_for_status()
+            
+            print("Vision API response received")
+            return response.json()["choices"][0]["message"]["content"]
+
+        except Exception as e:
+            print("Vision API error:", str(e))
+            return "AI vision analysis temporarily unavailable"

@@ -1,0 +1,11 @@
+[
+    {
+        "id": "9825f30e-1a97-409e-a609-a2f8cbe6bf7d",
+        "farmer_name": "Farmer Imad",
+        "crop_name": "Tomatoes",
+        "price": 45.0,
+        "unit": "kg",
+        "location": "Algiers",
+        "timestamp": "2026-04-18T00:58:22.855071"
+    }
+]

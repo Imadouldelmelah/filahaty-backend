@@ -3,6 +3,8 @@ from services.tracking_service import tracking_service
 from services.weather_service import weather_service
 from services.fake_monitoring_service import fake_monitoring_service
 from services.ai_decision_engine import ai_decision_engine
+from services.yield_prediction_service import yield_prediction_service
+from models.prediction_models import YieldPredictionRequest
 from utils.logger import logger
 
 router = APIRouter(prefix="/field", tags=["Field Analytics"])
@@ -48,3 +50,24 @@ async def get_field_decision(field_id: str):
     except Exception as e:
         logger.error(f"Error fetching field decision: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to compute field decision.")
+
+@router.post("/predict-yield")
+async def predict_field_yield(request: YieldPredictionRequest):
+    """
+    Predicts crop yield based on field size, crop, monitoring, and weather data.
+    """
+    try:
+        context = {
+            "crop_name": request.crop_name,
+            "field_size_hectares": request.field_size_hectares,
+            "monitoring_data": request.monitoring_data,
+            "weather_data": request.weather_data
+        }
+        
+        prediction = await yield_prediction_service.predict_yield(context)
+        return prediction
+        
+    except Exception as e:
+        logger.error(f"Yield Prediction Route Error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to calculate yield prediction.")
+

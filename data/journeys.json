@@ -44,5 +44,13 @@
         "latitude": null,
         "longitude": null,
         "history": []
+    },
+    "1b5d1f98-7b58-4c4b-b6b9-773ed79ecce0": {
+        "journey_id": "1b5d1f98-7b58-4c4b-b6b9-773ed79ecce0",
+        "crop_name": "potatoes",
+        "start_date": "2026-03-01",
+        "latitude": 36.75,
+        "longitude": 3.05,
+        "history": []
     }
 }
