@@ -9,6 +9,7 @@ class SoilData(BaseModel):
     humidity: Optional[float] = 60.0
     ph: Optional[float] = 6.5
     rainfall: Optional[float] = 500.0
+    soil_moisture: Optional[float] = 60.0
 
 class MSPRequest(BaseModel):
     crop_name: str

@@ -50,9 +50,9 @@ class AIAgronomistService:
             REAL-TIME IOT SENSOR READINGS (CRITICAL):
             - Soil Moisture: {monitoring_data.get('soil_moisture')}%
             - Soil pH: {monitoring_data.get('ph')}
-            - Nitrogen (N): {monitoring_data.get('N')} mg/kg
-            - Phosphorus (P): {monitoring_data.get('P')} mg/kg
-            - Potassium (K): {monitoring_data.get('K')} mg/kg
+            - Nitrogen: {monitoring_data.get('nitrogen')} mg/kg
+            - Phosphorus: {monitoring_data.get('phosphorus')} mg/kg
+            - Potassium: {monitoring_data.get('potassium')} mg/kg
             - Field Temp: {monitoring_data.get('temperature')}°C
             - Field Humidity: {monitoring_data.get('humidity')}%
             """
@@ -80,76 +80,55 @@ class AIAgronomistService:
 
         # 2. Construct the Hybrid Prompt
         prompt = f"""
-        You are an expert agronomist. You act like a real, experienced agronomist explaining decisions directly to the farmer.
-        Your advice must be highly practical, clear, and simple. Avoid dense academic jargon.
-        
-        STRICT QUALITY GUIDELINES:
-        - EXPLAIN WHY AND WHAT: Always explain exactly WHY a decision was made, and clearly state WHAT the farmer should do.
-        - NO GENERIC ANSWERS: Avoid broad advice like "water your plants". Instead, say e.g. "Water 3L per plant at 6 AM".
-        - ACTIONABLE ADVICE: Every step must be a concrete, practical action a farmer can perform today.
-        - AGRICULTURAL CORRECTNESS: Use precise agricultural terminology only when necessary, keeping it easy to understand.
+        ACT AS: A Senior Algerian Agronomist.
+        TASK: Provide context-aware advice combining expert rules and real-time sensor data.
         
         USER CONTEXT:
         - Crop: {crop_name}
         - Current Growth Stage: {current_stage_name}
-        - Current Weather: {context.get('weather')}
         - Soil Type: {context.get('soil')}
-        - Field Size: {context.get('field_size')}
         
         {scientific_insights}
-        
         {history_context}
-        
         {monitoring_context}
-        
         {expert_rules}
         
-        YOUR TASK:
-        1. Start with the EXPERT RULES as your scientific foundation.
-        2. MANDATORY WEATHER OVERRIDE:
-           - Priority 1: Observe the SCIENTIFIC WEATHER GUARDRAILS.
-           - If a guardrail contradicts an expert rule (e.g., skip irrigation due to rain), YOU MUST prioritize the guardrail.
-           - Mention the specific weather metric (e.g., "Because temperature has reached 42°C, you must...")
-        3. Respect the PREVIOUS ACTIONS:
-           - Do not recommend redundant tasks that have already been recorded as completed.
-           - Provide continuity (e.g., "Continuing from your last action of...")
-        4. REACT TO SENSOR DATA (URGENT):
-           - Analyze the REAL-TIME IOT SENSOR READINGS.
-           - If moisture is low (<30%), prioritize irrigation.
-           - If pH is unbalanced, explain how it affects nutrient uptake.
-           - Explicitly mention the sensor values in your explanation (e.g., "Current moisture is 22%, which is dangerously low...").
-        5. ENHANCE the rules by:
-           - Explaining the importance of each task (the "why").
-           - Increasing precision based on the local weather and soil.
-           - Adapting the instructions to the the field size.
-        5. Provide clear, simple, step-by-step instructions.
-        6. Format your entire response as a VALID JSON object.
-        7. Do NOT include any text outside the JSON object.
-        8. The JSON schema MUST be:
+        STRICT OUTPUT FORMAT:
+        Return ONLY valid JSON. No markdown backticks. No explanation outside JSON.
+        
+        REQUIRED SCHEMA:
         {{
-            "advice": "Grounded expert advice string with professional tone.",
-            "actions": ["Step 1: description", "Step 2: description", ...]
+            "advice": "Grounded expert advice string.",
+            "actions": ["Step 1", "Step 2", ...]
         }}
         """
         
         try:
-            logger.info(f"Generating hybrid expert advice for {crop_name}")
+            logger.info(f"AI_AGRONOMIST: Generating advice for {crop_name}")
             raw_response = await self._ai.generate(prompt)
             
-            # Clean response for JSON parsing
+            # Indestructible JSON extraction logic
             clean_response = raw_response.strip()
-            if clean_response.startswith("```json"):
-                clean_response = clean_response[7:-3].strip()
-            elif clean_response.startswith("```"):
-                clean_response = clean_response[3:-3].strip()
+            if "```json" in clean_response:
+                clean_response = clean_response.split("```json")[1].split("```")[0].strip()
+            elif "```" in clean_response:
+                clean_response = clean_response.split("```")[1].split("```")[0].strip()
                 
-            return json.loads(clean_response)
+            start_idx = clean_response.find("{")
+            end_idx = clean_response.rfind("}")
+            
+            if start_idx == -1 or end_idx == -1:
+                raise ValueError("JSON braces not found in AI response")
+                
+            json_str = clean_response[start_idx : end_idx + 1]
+            return json.loads(json_str)
             
         except Exception as e:
-            logger.error(f"AI Agronomist Error: {str(e)}")
+            logger.error(f"AI_AGRONOMIST_FAILURE: {str(e)}")
+            # Guaranteed robust fallback advice
             return {
-                "advice": "Our AI expert is currently busy. Please follow standard stage guidelines for your crop.",
-                "actions": ["Check soil moisture", "Inspect for common pests"]
+                "advice": "Our real-time analysis engine is currently syncing. Please follow standard watering and monitoring procedures for this growth stage.",
+                "actions": ["Check soil moisture manually", "Inspect leaves for any early signs of pest activity"]
             }
 
     async def generate_advanced_chat(self, context: dict, user_message: str) -> str:
