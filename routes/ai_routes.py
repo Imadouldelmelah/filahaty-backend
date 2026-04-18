@@ -2,23 +2,27 @@ import os
 import requests
 import base64
 from fastapi import APIRouter, HTTPException, UploadFile, File
+from pydantic import BaseModel
 from models.chat_models import ChatRequest, ChatResponse, AdvancedChatRequest
 from utils.logger import logger
 
 router = APIRouter(prefix="/ai", tags=["AI Assistant"])
 
-@router.post("/chat", response_model=ChatResponse)
-async def chat_with_ai_endpoint(request: ChatRequest):
-    key = os.getenv("OPENROUTER_API_KEY")
-    if not key:
-        print("API key missing")
-        return ChatResponse(response="AI assistant unavailable")
-        
+def call_ai(prompt):
+    import os
+    import requests
+
+    api_key = os.getenv("OPENROUTER_API_KEY")
+
+    if not api_key:
+        return "AI temporarily unavailable"
+
     try:
+        print("Calling AI...")
         response = requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
             headers={
-                "Authorization": f"Bearer {key}",
+                "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json"
             },
             json={
@@ -28,19 +32,28 @@ async def chat_with_ai_endpoint(request: ChatRequest):
                         "role": "system",
                         "content": "You are Filahaty AI, an agricultural expert helping farmers in Algeria."
                     },
-                    {
-                        "role": "user",
-                        "content": message
-                    }
+                    {"role": "user", "content": prompt}
                 ]
-            }
+            },
+            timeout=20
         )
-        
-        return ChatResponse(response=response.json()["choices"][0]["message"]["content"])
+        print(f"AI Response Status: {response.status_code}")
 
-    except Exception as e:
-        logger.error(f"Chat Error: {str(e)}")
-        return ChatResponse(response="AI assistant temporarily unavailable")
+        if response.status_code != 200:
+            return "AI temporarily unavailable"
+
+        return response.json()["choices"][0]["message"]["content"]
+
+    except Exception:
+        return "AI temporarily unavailable"
+
+@router.post("/chat", response_model=ChatResponse)
+async def chat_with_ai_endpoint(request: ChatRequest):
+    """
+    AI works only when endpoint is called.
+    """
+    response = call_ai(request.message)
+    return ChatResponse(response=response)
 
 @router.post("/chat-advanced", response_model=ChatResponse)
 async def advanced_chat_with_ai_endpoint(request: AdvancedChatRequest):
