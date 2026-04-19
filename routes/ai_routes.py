@@ -14,11 +14,16 @@ def call_ai(prompt):
 
     api_key = os.getenv("OPENROUTER_API_KEY")
 
+    # Debug: log whether the key is present
+    print(f"[AI_CHAT] OPENROUTER_API_KEY present: {bool(api_key)}")
+    logger.info(f"AI_CHAT: OPENROUTER_API_KEY present: {bool(api_key)}")
+
     if not api_key:
-        return "AI temporarily unavailable"
+        logger.error("AI_CHAT: OPENROUTER_API_KEY is missing — cannot call AI.")
+        return "AI error: OPENROUTER_API_KEY not configured. Please contact support."
 
     try:
-        print("Calling AI...")
+        print("[AI_CHAT] Sending request to OpenRouter...")
         response = requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
             headers={
@@ -28,24 +33,37 @@ def call_ai(prompt):
             json={
                 "model": "openai/gpt-4o-mini",
                 "messages": [
-                    {
-                        "role": "system",
-                        "content": "You are Filahaty AI, an agricultural expert helping farmers in Algeria."
-                    },
                     {"role": "user", "content": prompt}
                 ]
             },
             timeout=20
         )
-        print(f"AI Response Status: {response.status_code}")
+
+        # Debug: log full status and raw response body
+        print(f"[AI_CHAT] Response status code: {response.status_code}")
+        print(f"[AI_CHAT] Response text: {response.text}")
+        logger.info(f"AI_CHAT: status={response.status_code}")
+        logger.debug(f"AI_CHAT: raw_response={response.text}")
 
         if response.status_code != 200:
-            return "AI temporarily unavailable"
+            logger.error(f"AI_CHAT: OpenRouter returned error {response.status_code}: {response.text}")
+            return f"AI error: OpenRouter returned {response.status_code} — {response.text}"
 
-        return response.json()["choices"][0]["message"]["content"]
+        # Safe JSON parsing
+        try:
+            data = response.json()
+            content = data["choices"][0]["message"]["content"]
+            return content
+        except (KeyError, IndexError, ValueError) as parse_err:
+            logger.error(f"AI_CHAT: Failed to parse OpenRouter response: {parse_err} | raw: {response.text}")
+            return "AI error: please try again"
 
-    except Exception:
-        return "AI temporarily unavailable"
+    except requests.exceptions.Timeout:
+        logger.error("AI_CHAT: Request to OpenRouter timed out.")
+        return "AI error: request timed out, please try again"
+    except Exception as e:
+        logger.error(f"AI_CHAT: Unexpected error: {str(e)}")
+        return "AI error: please try again"
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat_with_ai_endpoint(request: ChatRequest):

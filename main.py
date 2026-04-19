@@ -1,5 +1,10 @@
 print("Starting backend...")
 
+# Load .env FIRST before any other imports read env vars
+from dotenv import load_dotenv
+load_dotenv()
+
+
 import time
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -76,12 +81,19 @@ except Exception as e:
 
 @app.on_event("startup")
 async def startup_event():
-    # Verify critical settings
-    if not settings.OPENROUTER_API_KEY:
-        logger.warning("SECURITY_ALERT: OPENROUTER_API_KEY is missing. AI features will fail.")
+    import os
+    # Verify critical settings on startup with explicit debug output
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    if api_key:
+        print(f"[STARTUP] OPENROUTER_API_KEY loaded: YES (length={len(api_key)})")
+        logger.info("STARTUP: OPENROUTER_API_KEY is present and loaded.")
+    else:
+        print("[STARTUP] OPENROUTER_API_KEY loaded: NO — AI features will fail!")
+        logger.error("STARTUP_ERROR: OPENROUTER_API_KEY is missing. Check .env or environment variables.")
+
     if not settings.NEWS_API_KEY:
         logger.warning("SECURITY_ALERT: NEWS_API_KEY is missing. News features will be disabled.")
-        
+
     logger.info(f"Filahaty Backend Hardened Surface - v{settings.VERSION}")
     print("Server started successfully")
 

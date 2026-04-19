@@ -25,15 +25,20 @@ class GeminiService:
         """
         import os
         import requests
-        
+
         api_key = os.getenv("OPENROUTER_API_KEY")
+
+        # Debug: log key presence
+        print(f"[GEMINI_SVC] OPENROUTER_API_KEY present: {bool(api_key)}")
+        logger.info(f"GEMINI_SVC: OPENROUTER_API_KEY present: {bool(api_key)}")
+
         if not api_key:
-            logger.warning("AI execution attempted but OPENROUTER_API_KEY is missing.")
-            return "AI temporarily unavailable"
+            logger.error("GEMINI_SVC: OPENROUTER_API_KEY is missing.")
+            return "AI error: OPENROUTER_API_KEY not configured."
 
         try:
-            logger.info(f"AI_EXECUTION: Sending chat completion request to OpenRouter.")
-            print("Calling AI...")
+            logger.info("GEMINI_SVC: Sending chat completion request to OpenRouter.")
+            print("[GEMINI_SVC] Calling OpenRouter...")
             response = requests.post(
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers={
@@ -52,17 +57,32 @@ class GeminiService:
                 },
                 timeout=20
             )
-            print(f"AI Response Status: {response.status_code}")
+
+            # Debug: log status and raw response
+            print(f"[GEMINI_SVC] Response status code: {response.status_code}")
+            print(f"[GEMINI_SVC] Response text: {response.text}")
+            logger.info(f"GEMINI_SVC: status={response.status_code}")
+            logger.debug(f"GEMINI_SVC: raw_response={response.text}")
 
             if response.status_code != 200:
-                logger.error(f"OpenRouter Error: {response.text}")
-                return "AI temporarily unavailable"
+                logger.error(f"GEMINI_SVC: OpenRouter error {response.status_code}: {response.text}")
+                return f"AI error: OpenRouter returned {response.status_code} — {response.text}"
 
-            return response.json()["choices"][0]["message"]["content"]
+            # Safe JSON parsing
+            try:
+                data = response.json()
+                return data["choices"][0]["message"]["content"]
+            except (KeyError, IndexError, ValueError) as parse_err:
+                logger.error(f"GEMINI_SVC: JSON parse error: {parse_err} | raw: {response.text}")
+                return "AI error: please try again"
 
+        except requests.exceptions.Timeout:
+            logger.error("GEMINI_SVC: Request to OpenRouter timed out.")
+            return "AI error: request timed out, please try again"
         except Exception as e:
-            logger.error(f"Safe AI Execution Error: {str(e)}")
-            return "AI temporarily unavailable"
+            logger.error(f"GEMINI_SVC: Unexpected error: {str(e)}")
+            return "AI error: please try again"
+
 
     async def generate_vision(self, prompt: str, base64_image: str, mime_type: str = "image/jpeg"):
         """
@@ -70,14 +90,20 @@ class GeminiService:
         """
         import os
         import requests
-        
+
         api_key = os.getenv("OPENROUTER_API_KEY")
+
+        # Debug: log key presence
+        print(f"[GEMINI_VISION] OPENROUTER_API_KEY present: {bool(api_key)}")
+        logger.info(f"GEMINI_VISION: OPENROUTER_API_KEY present: {bool(api_key)}")
+
         if not api_key:
-            return "AI temporarily unavailable"
+            logger.error("GEMINI_VISION: OPENROUTER_API_KEY is missing.")
+            return "AI error: OPENROUTER_API_KEY not configured."
 
         try:
-            logger.info(f"AI_EXECUTION: Sending vision request to OpenRouter.")
-            print("Calling AI Vision...")
+            logger.info("GEMINI_VISION: Sending vision request to OpenRouter.")
+            print("[GEMINI_VISION] Calling OpenRouter Vision...")
             response = requests.post(
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers={
@@ -103,14 +129,29 @@ class GeminiService:
                 },
                 timeout=25
             )
-            print(f"AI Vision Response Status: {response.status_code}")
+
+            # Debug: log status and raw response
+            print(f"[GEMINI_VISION] Response status code: {response.status_code}")
+            print(f"[GEMINI_VISION] Response text: {response.text}")
+            logger.info(f"GEMINI_VISION: status={response.status_code}")
+            logger.debug(f"GEMINI_VISION: raw_response={response.text}")
 
             if response.status_code != 200:
-                logger.error(f"OpenRouter Vision Error: {response.text}")
-                return "AI temporarily unavailable"
+                logger.error(f"GEMINI_VISION: OpenRouter error {response.status_code}: {response.text}")
+                return f"AI error: OpenRouter vision returned {response.status_code} — {response.text}"
 
-            return response.json()["choices"][0]["message"]["content"]
+            # Safe JSON parsing
+            try:
+                data = response.json()
+                return data["choices"][0]["message"]["content"]
+            except (KeyError, IndexError, ValueError) as parse_err:
+                logger.error(f"GEMINI_VISION: JSON parse error: {parse_err} | raw: {response.text}")
+                return "AI error: please try again"
 
+        except requests.exceptions.Timeout:
+            logger.error("GEMINI_VISION: Request to OpenRouter timed out.")
+            return "AI error: request timed out, please try again"
         except Exception as e:
-            logger.error(f"Safe Vision Execution Error: {str(e)}")
-            return "AI temporarily unavailable"
+            logger.error(f"GEMINI_VISION: Unexpected error: {str(e)}")
+            return "AI error: please try again"
+
