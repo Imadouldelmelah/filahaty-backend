@@ -47,10 +47,11 @@ class GeminiService:
                 },
                 json={
                     "model": "openai/gpt-4o-mini",
+                    "max_tokens": 500,
                     "messages": [
                         {
                             "role": "system",
-                            "content": "You are an agricultural expert specialized in Algeria farming."
+                            "content": "You are an expert agronomist for Algeria. Be concise."
                         },
                         {"role": "user", "content": message}
                     ]
@@ -112,6 +113,7 @@ class GeminiService:
                 },
                 json={
                     "model": "openai/gpt-4o-mini",
+                    "max_tokens": 600,
                     "messages": [
                         {
                             "role": "user",

@@ -23,7 +23,9 @@ def call_ai(prompt):
         return "AI error: OPENROUTER_API_KEY not configured. Please contact support."
 
     try:
-        print("[AI_CHAT] Sending request to OpenRouter...")
+        # Dynamic token control: short prompts need fewer tokens
+        max_tokens = 300 if len(prompt) <= 100 else 500
+        print(f"[AI_CHAT] Sending request to OpenRouter (max_tokens={max_tokens})...")
         response = requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
             headers={
@@ -32,6 +34,7 @@ def call_ai(prompt):
             },
             json={
                 "model": "openai/gpt-4o-mini",
+                "max_tokens": max_tokens,
                 "messages": [
                     {"role": "user", "content": prompt}
                 ]
