@@ -20,10 +20,10 @@ class FakeMonitoringService:
                 "temperature": random.randint(18, 30),
                 "humidity": random.randint(50, 90),
                 "ph": round(random.uniform(5.5, 7.5), 1),
-                "nitrogen": random.randint(20, 60),
-                "phosphorus": random.randint(20, 50),
-                "potassium": random.randint(20, 50),
-                "rainfall": round(random.uniform(0.0, 150.0), 1)
+                "nitrogen": random.randint(0, 140),
+                "phosphorus": random.randint(0, 120),
+                "potassium": random.randint(0, 120),
+                "rainfall": round(random.uniform(0.0, 400.0), 1)
             }
             
             # Calculate derived health score (Indestructible integration)

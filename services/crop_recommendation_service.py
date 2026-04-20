@@ -7,35 +7,45 @@ class CropRecommendationService:
     def __init__(self):
         self._ai = GeminiService()
 
-    async def generate_recommendation(self, context: dict) -> dict:
+    async def generate_recommendation(self, context: dict, last_crop: str = None, candidates: list = None) -> dict:
         """
-        Generates a hardened AI crop recommendation with strict JSON enforcement.
+        Generates a hybrid AI crop recommendation by refining rule-engine candidates.
         Ensures the response always matches the schema: {crop, confidence, reason}.
-        Zero-failure design with multi-layer fallback.
         """
-        # Task 2: Prepare clean input for AI
+        history_context = f"\n        PREVIOUSLY RECOMMENDED: {last_crop}" if last_crop else ""
+        candidate_context = f"\n        SCIENTIFIC CANDIDATES: {', '.join(candidates)}" if candidates else ""
+
+        # Task 2: Prepare hybrid scientific input for AI
         prompt = f"""
-        ACT AS: An elite Algerian Agronomist and Soil Scientist.
-        TASK: Analyze real-time sensing data and recommend the most profitable and viable crop.
+        ACT AS: An elite Agronomist and Soil Scientist specializing in specialized N-African agriculture.
+        TASK: Refine and select the best crop from the identified scientific candidates.
+        {history_context}
+        {candidate_context}
         
         SENSOR INPUTS:
-        - Nitrogen: {context.get('nitrogen')}
-        - Phosphorus: {context.get('phosphorus')}
-        - Potassium: {context.get('potassium')}
+        - Nitrogen: {context.get('nitrogen')} mg/kg
+        - Phosphorus: {context.get('phosphorus')} mg/kg
+        - Potassium: {context.get('potassium')} mg/kg
         - Soil Moisture: {context.get('soil_moisture')}%
         - Temperature: {context.get('temperature')}°C
         - Humidity: {context.get('humidity')}%
         - pH Level: {context.get('ph')}
         - Rainfall: {context.get('rainfall')}mm
         
+        HYBRID INSTRUCTIONS:
+        1. SELECTION PRIORITY: If SCIENTIFIC CANDIDATES are provided, you MUST select the BEST one from that specific list. 
+        2. DATA REFINEMENT: Use the N-P-K ratios to differentiate between candidates (e.g., if Tomato and Pepper are both candidates, high N favors Tomato).
+        3. DIVERSITY: Do not repeat the PREVIOUSLY RECOMMENDED crop if a suitable alternative exists in the candidates.
+        4. JUSTIFICATION: Provide an expert reasoning that links the specific sensor data to why you chose this specific candidate.
+        
         STRICT OUTPUT FORMAT:
-        Return ONLY a JSON object. No explanation, no markdown backticks, no text before or after.
+        Return ONLY a JSON object. No markdown backticks.
         
         REQUIRED JSON SCHEMA:
         {{
-            "crop": "Exact name of recommended crop",
+            "crop": "The chosen crop name from candidates (e.g., Wheat, Potato, Olive, etc.)",
             "confidence": "high" | "medium" | "low",
-            "reason": "Detailed expert reasoning for the recommendation"
+            "reason": "Expert scientific refinement for selecting this specific candidate."
         }}
         """
         

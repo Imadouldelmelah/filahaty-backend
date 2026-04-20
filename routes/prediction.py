@@ -120,79 +120,151 @@ NORTH_AFRICAN_PRIORITY = {
     "Maize": 8
 }
 
+import random
+
+# In-memory history tracking to ensure result diversity across sequential requests
+DIVERSITY_CACHE = {}
+
+def get_rule_candidates(n, p, k, temp, hum, ph, rain):
+    """
+    Scientific Rule Engine: Identifies a pool of viable crop candidates.
+    Returns: (candidates_list, best_fallback_tuple)
+    """
+    scores = []
+    for crop, profile in CROP_PROFILES.items():
+        score = 0
+        if profile["N"][0] <= n <= profile["N"][1]: score += 2  # NPK is weighted higher
+        if profile["P"][0] <= p <= profile["P"][1]: score += 2
+        if profile["K"][0] <= k <= profile["K"][1]: score += 2
+        if profile["ph"][0] <= ph <= profile["ph"][1]: score += 1
+        if profile["temp"][0] <= temp <= profile["temp"][1]: score += 1
+        if profile["hum"][0] <= hum <= profile["hum"][1]: score += 1
+        if profile["rain"][0] <= rain <= profile["rain"][1]: score += 1
+        
+        scores.append((crop, score))
+    
+    # Sort by score descending and take Top 3
+    sorted_crops = sorted(scores, key=lambda x: x[1], reverse=True)
+    candidates = [c[0] for c in sorted_crops[:3] if c[1] > 0]
+    
+    # Absolute Mandatory Overrides (Emergency Safety)
+    if ph < 5.8:
+        return ["Potato"], ("Potato", 95, "Acidic soil override: Mandatory potato baseline.")
+    if temp > 33:
+        return ["Maize"], ("Maize", 90, "Thermal peak override: Heat-tolerant maize recommended.")
+
+    # High-reliability baseline if no candidates matched well
+    best_fallback = (sorted_crops[0][0], 70, f"Based on environmental profile, {sorted_crops[0][0]} is the leading viable option.") if sorted_crops else ("Wheat", 60, "Resilient Wheat baseline.")
+    
+    return candidates, best_fallback
+
 @router.post("/predict")
 async def predict_crop(data: SoilData):
     """
-    Indestructible Crop Recommendation Route. 
-    Guaranteed to return valid JSON and never return 500.
+    Hybrid Recommendation Engine.
+    Layer 1: Rule Engine filtering -> Layer 2: AI Refinement.
     """
-    logger.info(f"--- CROP RECOMMENDATION ENGINE START ---")
+    logger.info(f"--- HYBRID CROP RECOMMENDATION START ---")
     
     try:
-        # Layer 1: Rule-Based Logic (Local Fallback)
-        best_crop = "Wheat"
-        max_score = -1
-        
         n, p, k = data.nitrogen, data.phosphorus, data.potassium
         temp, hum, ph, rain = data.temperature, data.humidity, data.ph, data.rainfall
         
-        for crop, profile in CROP_PROFILES.items():
-            score = 0
-            if profile["N"][0] <= n <= profile["N"][1]: score += 1
-            if profile["P"][0] <= p <= profile["P"][1]: score += 1
-            if profile["K"][0] <= k <= profile["K"][1]: score += 1
-            if profile["temp"][0] <= temp <= profile["temp"][1]: score += 1
-            if profile["hum"][0] <= hum <= profile["hum"][1]: score += 1
-            if profile["ph"][0] <= ph <= profile["ph"][1]: score += 1
-            if profile["rain"][0] <= rain <= profile["rain"][1]: score += 1
-            
-            if score > max_score:
-                max_score = score
-                best_crop = crop
-            elif score == max_score and max_score > 0:
-                if NORTH_AFRICAN_PRIORITY.get(crop, 99) < NORTH_AFRICAN_PRIORITY.get(best_crop, 99):
-                    best_crop = crop
-                    
-        confidence_mapping = {7: 95, 6: 85, 5: 75, 4: 65, 3: 50, 2: 35, 1: 20, 0: 10}
-        rule_confidence = confidence_mapping.get(max_score, 10)
-        img_url = CROP_IMAGES.get(best_crop, CROP_IMAGES["Default"])
-        rule_reason = f"Based on local soil profile analysis, {best_crop} is a stable choice with a {rule_confidence}% environmental match."
-
-        # Layer 2: Advanced AI Recommendation (OpenRouter/Gemini)
-        final_crop, final_conf, final_reason = best_crop, rule_confidence, rule_reason
+        # High-visibility logging for debugging
+        print(f"\n[DEBUG_INPUT] NITROGEN: {n}, PHOSPHORUS: {p}, POTASSIUM: {k}")
+        print(f"[DEBUG_INPUT] pH: {ph}, TEMP: {temp}°C, HUMIDITY: {hum}%, RAINFALL: {rain}mm")
+        logger.info(f"CROP_RECOMMENDATION_INPUT: {data.model_dump()}")
+        
+        # Pull last result for diversity
+        last_crop = DIVERSITY_CACHE.get("global_last")
+        
+        # Step 1: Rule Engine identifies candidates
+        candidates, fallback = get_rule_candidates(n, p, k, temp, hum, ph, rain)
+        rule_crop, rule_conf, rule_reason = fallback
+        
+        # Step 2: AI Refinement (Select best from candidates)
+        final_crop, final_conf, final_reason = rule_crop, rule_conf, rule_reason
         
         try:
             from services.crop_recommendation_service import CropRecommendationService
             crop_svc = CropRecommendationService()
-            # context.get('soil_moisture') is handled inside the service call
-            ai_rec = await crop_svc.generate_recommendation(data.model_dump())
+            # Pass candidates for the AI to refine/choose from
+            ai_rec = await crop_svc.generate_recommendation(
+                context=data.model_dump(), 
+                last_crop=last_crop,
+                candidates=candidates
+            )
             
             if ai_rec.get("status") != "system_fallback":
-                final_crop = ai_rec.get("crop", best_crop)
-                final_conf = ai_rec.get("confidence", rule_confidence)
+                final_crop = ai_rec.get("crop", rule_crop)
+                final_conf = ai_rec.get("confidence", rule_conf)
                 final_reason = ai_rec.get("reason", rule_reason)
-                img_url = CROP_IMAGES.get(final_crop, CROP_IMAGES["Default"])
+                
+                # LAYER 3: MANDATORY SCIENTIFIC OVERRIDES (pH-based safety check)
+                if ph < 5.8 and final_crop.lower() != "potato":
+                    final_crop, final_conf, final_reason = rule_crop, rule_conf, f"Scientific override: {final_reason} However, due to critical soil acidity (pH {ph}), {rule_crop} is the only viable baseline."
         except Exception as ai_err:
-            logger.error(f"ROUTE_AI_ADAPTATION_FAILED: {str(ai_err)}")
+            logger.error(f"HYBRID_AI_REFINEMENT_FAILED: {str(ai_err)}")
+
+        # --- LOGIC VALIDATION LAYER ---
+        # Generate fingerprint for current input
+        current_digest = f"N:{n}P:{p}K:{k}Ph:{ph}T:{temp}"
+        history = DIVERSITY_CACHE.get("global_history", [])
+        history.append((current_digest, final_crop))
+        
+        # Keep sliding window of last 5
+        if len(history) > 5:
+            history = history[-5:]
+        DIVERSITY_CACHE["global_history"] = history
+        
+        # Stagnancy Check: If last 4 crops are identical but inputs were different
+        is_stagnant = False
+        if len(history) >= 4:
+            all_same_crop = all(item[1] == final_crop for item in history)
+            inputs_differ = len(set(item[0] for item in history)) > 1
+            if all_same_crop and inputs_differ:
+                is_stagnant = True
+                logger.warning(f"--- LOGIC_VALIDATION_WARNING: Stagnant Result Detected ('{final_crop}') for Varying Inputs ---")
+                print(f"[VALIDATION] WARNING: Results are constant despite input changes. Potential Logic Bias!")
+
+        # Update cache for diversity enforcement
+        DIVERSITY_CACHE["global_last"] = final_crop
 
         return {
             "crop": final_crop,
             "confidence": int(final_conf),
             "reason": final_reason,
-            "explanation": final_reason, # Backward compatibility
-            "image_url": img_url
+            "explanation": final_reason,
+            "image_url": CROP_IMAGES.get(final_crop, CROP_IMAGES["Default"]),
+            "validation": {
+                "is_stagnant": is_stagnant,
+                "status": "warning" if is_stagnant else "stable",
+                "logic_warning": "Recommendation logic might be stuck. Result remains constant despite input variation." if is_stagnant else None
+            }
         }
 
     except Exception as e:
         logger.error(f"CRITICAL_ROUTE_FAILURE: {str(e)}")
-        # Layer 3: Absolute Safety Fallback
-        return {
-            "crop": "Wheat",
-            "confidence": 50,
-            "reason": "System is currently undergoing optimization. Wheat is recommended as a resilient fallback for Algerian soil.",
-            "explanation": "emergency fallback",
-            "image_url": CROP_IMAGES.get("Wheat")
-        }
+        # Layer 3: Absolute Safety Fallback based on Rules
+        try:
+             n, p, k = data.nitrogen, data.phosphorus, data.potassium
+             temp, hum, ph, rain = data.temperature, data.humidity, data.ph, data.rainfall
+             f_crop, f_conf, f_res = run_rule_engine(n, p, k, temp, hum, ph, rain)
+             return {
+                "crop": f_crop,
+                "confidence": f_conf,
+                "reason": f_res,
+                "explanation": "emergency rule-based fallback",
+                "image_url": CROP_IMAGES.get(f_crop, CROP_IMAGES["Default"])
+            }
+        except:
+            return {
+                "crop": "Wheat",
+                "confidence": 50,
+                "reason": "System is currently undergoing optimization. Wheat is recommended as a resilient baseline.",
+                "explanation": "absolute emergency fallback",
+                "image_url": CROP_IMAGES.get("Wheat")
+            }
 
 @router.get("/predict/auto")
 async def predict_crop_automatically(
