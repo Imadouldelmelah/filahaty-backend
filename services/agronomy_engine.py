@@ -145,8 +145,9 @@ def get_rule_based_crop(data: dict) -> dict:
     if temp > 30:
         return {
             "crop": "Corn",
-            "confidence": 60,
+            "confidence": "medium",
             "reason": f"High temperature detected ({temp}°C). Recommending heat-tolerant Corn.",
+            "alternatives": ["Sorghum", "Millet"],
             "status": "offline_optimized"
         }
     
@@ -154,8 +155,9 @@ def get_rule_based_crop(data: dict) -> dict:
     if humidity > 80:
         return {
             "crop": "Rice",
-            "confidence": 60,
+            "confidence": "medium",
             "reason": f"High humidity detected ({humidity}%). Recommending Rice for moisture compatibility.",
+            "alternatives": ["Sugarcane", "Taro"],
             "status": "offline_optimized"
         }
         
@@ -163,8 +165,9 @@ def get_rule_based_crop(data: dict) -> dict:
     if ph < 6:
         return {
             "crop": "Potato",
-            "confidence": 60,
+            "confidence": "medium",
             "reason": f"Acidic soil detected (pH {ph}). Recommending Potato choice.",
+            "alternatives": ["Blueberry", "Radish"],
             "status": "offline_optimized"
         }
         
@@ -173,16 +176,18 @@ def get_rule_based_crop(data: dict) -> dict:
     if 6.0 <= ph <= 7.5:
         return {
             "crop": "Tomato",
-            "confidence": 60,
+            "confidence": "medium",
             "reason": "Balanced soil and climate detected. Recommending high-value Tomato cultivation.",
+            "alternatives": ["Pepper", "Cucumber"],
             "status": "offline_optimized"
         }
         
     # Default: Wheat
     return {
         "crop": "Wheat",
-        "confidence": 60,
-        "reason": "Stable Algerian Wheat recommended based on historic soil resilience.",
+        "confidence": "medium",
+        "reason": "Stable Algerian Wheat recommended based on historic soil resilience (offline recommendation).",
+        "alternatives": ["Barley", "Oats"],
         "status": "offline_optimized"
     }
 

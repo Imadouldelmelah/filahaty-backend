@@ -22,8 +22,20 @@ async def chat_with_ai_endpoint(request: ChatRequest):
     """
     AI works only when endpoint is called.
     """
-    response = await call_ai(request.message)
-    return ChatResponse(response=response)
+    try:
+        response = await call_ai(request.message)
+        if response == "AI_ERROR_FALLBACK":
+            return ChatResponse(
+                response="Smart offline mode activated: I can still guide you based on agricultural knowledge.",
+                status="offline_optimized"
+            )
+        return ChatResponse(response=response)
+    except Exception as e:
+        logger.error(f"CHAT_ERROR: {str(e)}")
+        return ChatResponse(
+            response="I'm momentarily offline, but still here to help with your farm.",
+            status="offline_optimized"
+        )
 
 @router.post("/chat-advanced", response_model=ChatResponse)
 async def advanced_chat_with_ai_endpoint(request: AdvancedChatRequest):
@@ -55,14 +67,20 @@ async def advanced_chat_with_ai_endpoint(request: AdvancedChatRequest):
         from services.ai_agronomist import AIAgronomistService
         agronomist_svc = AIAgronomistService()
         response_text = await agronomist_svc.generate_advanced_chat(context, request.message)
+        
+        if response_text == "AI_ERROR_FALLBACK":
+             return ChatResponse(
+                response="Smart offline mode activated: My advanced analysis is currently simplified.",
+                status="offline_optimized"
+            )
+
         return ChatResponse(response=response_text)
         
     except Exception as e:
         logger.warning(f"Advanced_Chat_AI_SKIPPED: {str(e)}. Using safe baseline.")
         return ChatResponse(
-            status="offline_optimized", 
-            message="Smart offline mode activated",
-            response="Smart offline mode activated: I can still guide you based on agricultural knowledge."
+            response="Smart offline mode activated: I can still guide you based on agricultural knowledge.",
+            status="offline_optimized"
         )
 
 @router.post("/analyze-image")

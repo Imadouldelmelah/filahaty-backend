@@ -21,13 +21,18 @@ class AIAgronomistService:
         async def ai_refinement():
             base_advice = get_rule_based_advice(crop_name, current_stage)
             prompt = f"""
-            ACT AS: Senior Agronomist.
-            TASK: Refine and humanize expert tasks.
+            ACT AS: Supportive Algerian Agronomist.
+            TASK: Humanize and explain existing expert tasks.
             CONTEXT: {crop_name} at {current_stage} stage.
-            BASELINE: {base_advice['tasks']}
+            EXPERT_TASKS: {base_advice['tasks']}
+            
+            INSTRUCTIONS:
+            1. DO NOT change the growth stage or core tasks.
+            2. Provide a supportive, conversational explanation of WHY these tasks are important.
+            3. Use a tone suitable for a local farmer.
             
             FORMAT: JSON only.
-            SCHEMA: {{"stage": "...", "tasks": ["Refined task 1", "..."], "advice": "Supportive advice", "alerts": []}}
+            SCHEMA: {{"stage": "{current_stage}", "tasks": {base_advice['tasks']}, "advice": "Supportive explanation...", "alerts": []}}
             """
             return await self._ai.generate(prompt)
 
@@ -36,6 +41,7 @@ class AIAgronomistService:
             baseline_func=lambda: get_rule_based_advice(crop_name, current_stage),
             ai_func=ai_refinement,
             schema_repair_keys=["stage", "tasks", "advice", "alerts"],
+            protected_keys=["tasks", "stage"],
             feature_name="AI_ADVICE"
         )
 

@@ -18,7 +18,11 @@ async def add_marketplace_item(item: MarketplaceItemCreate):
         return new_item
     except Exception as e:
         logger.error(f"Error adding marketplace item: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to add item to marketplace.")
+        # If adding fails, we still return a structured error result
+        return {
+            "error": "Submission Failed: System currently in offline mode.",
+            "status": "system_maintenance"
+        }
 
 @router.get("/list", response_model=List[MarketplaceItem])
 async def list_marketplace_items():
@@ -31,4 +35,5 @@ async def list_marketplace_items():
         return marketplace_svc.list_items()
     except Exception as e:
         logger.error(f"Error listing marketplace items: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve marketplace items.")
+        # Return empty list to prevent UI crash on frontend
+        return []

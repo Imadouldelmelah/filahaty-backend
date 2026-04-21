@@ -7,9 +7,9 @@ from typing import Optional
 
 class ChatResponse(BaseModel):
     response: str
-    error: Optional[str] = None
-    status: Optional[str] = "ai_optimized"
-    message: Optional[str] = None
+    error: str = ""
+    status: str = "ai_optimized"
+    message: str = ""
 
 class AdvancedChatRequest(BaseModel):
     message: str

@@ -16,13 +16,21 @@ class CropRecommendationService:
         
         # Define the AI refinement step
         async def ai_refinement():
-            prompt = f"""
-            ACT AS: Senior Agronomist.
-            SUBJECT: Crop Selection Refinement.
-            INPUT: {context}
+            from services.agronomy_engine import get_rule_based_crop
+            base_crop = get_rule_based_crop(context)["crop"]
             
-            TASK: Refine the baseline recommendation with scientific reasoning and alternatives.
-            SCHEMA: {{"crop": "...", "confidence": "high", "reason": "...", "alternatives": []}}
+            prompt = f"""
+            ACT AS: Master Agronomist.
+            SUBJECT: Scientific Reasoning for Crop Selection.
+            INPUT_DATA: {context}
+            RECOMMENDED_CROP: {base_crop}
+            
+            TASK: 
+            1. Provide a detailed scientific 'reason' for why '{base_crop}' is the absolute best choice based on the input data.
+            2. Suggest 2-3 compatible 'alternatives'.
+            
+            FORMAT: JSON only.
+            SCHEMA: {{"crop": "{base_crop}", "confidence": "high", "reason": "Scientific explanation...", "alternatives": []}}
             """
             return await self._ai.generate(prompt)
 
@@ -31,6 +39,7 @@ class CropRecommendationService:
             baseline_func=lambda: get_rule_based_crop(context),
             ai_func=ai_refinement,
             schema_repair_keys=["crop", "confidence", "reason", "alternatives"],
+            protected_keys=["crop"],
             feature_name="CROP_REC"
         )
 

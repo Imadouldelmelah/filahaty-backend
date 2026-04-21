@@ -13,6 +13,7 @@ class HybridDecisionController:
         baseline_func,
         ai_func,
         schema_repair_keys=None,
+        protected_keys=None,
         feature_name="HYBRID_DECISION"
     ):
         """
@@ -20,6 +21,7 @@ class HybridDecisionController:
         :param baseline_func: Callable that returns the agronomy baseline (must be synchronous).
         :param ai_func: Async Callable that attempts AI refinement.
         :param schema_repair_keys: List of keys to ensure exist in the final JSON.
+        :param protected_keys: List of keys that MUST be preserved from the baseline (AI cannot overwrite).
         :param feature_name: Name for logging.
         """
         # 1. Step 1: Get Agronomy Baseline (Guaranteed)
@@ -39,21 +41,34 @@ class HybridDecisionController:
             # Run AI with a timeout to prevent hanging
             raw_ai_response = await asyncio.wait_for(ai_func(), timeout=15)
             
-            if not raw_ai_response or not isinstance(raw_ai_response, str):
-                raise ValueError("Invaliad AI response type")
+            # TASK 1: Detect failure scenarios
+            if not raw_ai_response or not isinstance(raw_ai_response, str) or raw_ai_response.strip() == "":
+                raise ValueError("Empty or invalid AI response")
+                
+            if "AI_ERROR_FALLBACK" in raw_ai_response:
+                raise ValueError("AI Service Credits Exhausted or Unauthorized")
 
-            # Extract JSON substring
+            # Extract JSON substring (TASK 1: Detect invalid JSON)
             start_idx = raw_ai_response.find("{")
             end_idx = raw_ai_response.rfind("}")
             
             if start_idx == -1 or end_idx == -1:
-                raise ValueError("AI JSON delimiters not found")
+                raise ValueError("Malformed AI JSON: Delimiters not found")
                 
             json_str = raw_ai_response[start_idx : end_idx + 1]
-            refined_data = json.loads(json_str)
+            try:
+                refined_data = json.loads(json_str)
+            except json.JSONDecodeError:
+                raise ValueError("Malformed AI JSON: Parsing failed")
 
             # Merge AI refinement into base result
-            # Optimization: Only take specific keys from AI to prevent it from overwriting core logic
+            if protected_keys:
+                # Remove protected keys from AI data to prevent overwrite
+                for p_key in protected_keys:
+                    if p_key in refined_data:
+                        logger.info(f"{feature_name}: Blocking AI overwrite of protected key '{p_key}'")
+                        del refined_data[p_key]
+
             base_result.update(refined_data)
             base_result["status"] = "ai_optimized"
             
@@ -64,11 +79,18 @@ class HybridDecisionController:
             base_result["status"] = "offline_optimized"
             base_result["message"] = "Smart offline mode activated"
 
-        # 4. Step 4: Final Schema Repair & Validation
+        # 4. Step 4: Final Schema Repair & Validation (Guaranteed No Nulls)
         if schema_repair_keys:
             for key in schema_repair_keys:
-                if key not in base_result:
-                    base_result[key] = "System standard" if key != "alternatives" and key != "alerts" else []
+                # Catch both MISSING keys and NULL values
+                if key not in base_result or base_result[key] is None:
+                    logger.info(f"{feature_name}: Repairing missing or null key '{key}'")
+                    base_result[key] = "System standard" if key not in ["alternatives", "alerts", "tasks"] else []
+        
+        # Final pass: Ensure NO Top-Level null values in the result
+        for key, value in base_result.items():
+            if value is None:
+                base_result[key] = ""
         
         # Ensure status is always present
         if "status" not in base_result:
