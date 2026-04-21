@@ -121,10 +121,6 @@ CROP_PLANS = {
 def get_crop_plan(crop_name: str):
     """
     Returns a structured crop plan based on the crop name.
-    Args:
-        crop_name (str): Name of the crop (e.g., 'tomato', 'pepper').
-    Returns:
-        dict: Structured plan or error message.
     """
     crop_name_lower = crop_name.lower()
     if crop_name_lower in CROP_PLANS:
@@ -134,4 +130,94 @@ def get_crop_plan(crop_name: str):
         "error": "Crop not found",
         "message": f"Agronomy data for '{crop_name}' is not yet available in the engine.",
         "available_crops": list(CROP_PLANS.keys())
+    }
+
+def get_rule_based_crop(data: dict) -> dict:
+    """
+    Core Agronomic Expert System.
+    Identifies the best crop based on sensor thresholds.
+    """
+    temp = data.get("temperature", 0)
+    humidity = data.get("humidity", 0)
+    ph = data.get("ph", 7.0)
+    
+    # Priority 1: Heat (Corn)
+    if temp > 30:
+        return {
+            "crop": "Corn",
+            "confidence": 60,
+            "reason": f"High temperature detected ({temp}°C). Recommending heat-tolerant Corn.",
+            "status": "offline_optimized"
+        }
+    
+    # Priority 2: Humidity (Rice)
+    if humidity > 80:
+        return {
+            "crop": "Rice",
+            "confidence": 60,
+            "reason": f"High humidity detected ({humidity}%). Recommending Rice for moisture compatibility.",
+            "status": "offline_optimized"
+        }
+        
+    # Priority 3: Acidity (Potato)
+    if ph < 6:
+        return {
+            "crop": "Potato",
+            "confidence": 60,
+            "reason": f"Acidic soil detected (pH {ph}). Recommending Potato choice.",
+            "status": "offline_optimized"
+        }
+        
+    # Priority 4: Optimal Balance (Tomato)
+    # Check if N-P-K are in 'moderate' ranges (simulated check)
+    if 6.0 <= ph <= 7.5:
+        return {
+            "crop": "Tomato",
+            "confidence": 60,
+            "reason": "Balanced soil and climate detected. Recommending high-value Tomato cultivation.",
+            "status": "offline_optimized"
+        }
+        
+    # Default: Wheat
+    return {
+        "crop": "Wheat",
+        "confidence": 60,
+        "reason": "Stable Algerian Wheat recommended based on historic soil resilience.",
+        "status": "offline_optimized"
+    }
+
+def get_rule_based_advice(crop_name: str, stage_name: str) -> dict:
+    """
+    Extracts stage-specific advice from expert plans as a baseline.
+    """
+    plan = get_crop_plan(crop_name)
+    if "error" in plan:
+        return {
+            "stage": stage_name,
+            "tasks": ["Check field conditions", "Monitor soil moisture"],
+            "advice": "Follow standard regional protocols.",
+            "alerts": [],
+            "status": "offline_optimized"
+        }
+        
+    stage_data = next(
+        (s for s in plan.get("stages", []) if s["name"].lower() == stage_name.lower()), 
+        None
+    )
+    
+    if not stage_data:
+        return {
+            "stage": stage_name,
+            "tasks": ["General maintenance", "Observe growth"],
+            "advice": f"Review standard {crop_name} management practices for the {stage_name} stage.",
+            "alerts": [],
+            "status": "offline_optimized"
+        }
+        
+    return {
+        "stage": stage_data["name"],
+        "tasks": stage_data["tasks"],
+        "advice": f"Expert Goal: {stage_data['irrigation']} Fertilizer: {stage_data['fertilizer']}",
+        "alerts": [],
+        "status": "offline_optimized"
     }
