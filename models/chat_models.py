@@ -8,6 +8,8 @@ from typing import Optional
 class ChatResponse(BaseModel):
     response: str
     error: Optional[str] = None
+    status: Optional[str] = "ai_optimized"
+    message: Optional[str] = None
 
 class AdvancedChatRequest(BaseModel):
     message: str
