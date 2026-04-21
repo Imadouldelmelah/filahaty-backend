@@ -31,33 +31,26 @@ class AIAgronomistService:
             recs = "\n".join([f"* {r}" for r in insights['recommendations']])
             scientific_insights = f"\nSCIENTIFIC WEATHER GUARDRAILS (MANDATORY):\n{alerts}\n{recs}"
         
-        # 3. Fetch Journey History (Context Memory)
+        # 3. Fetch Journey History (Context Memory) - LIMIT TO LAST 2 ITEMS FOR TOKENS
         history_context = ""
         if journey_id:
             from services.tracking_service import TrackingService
             tracking_svc = TrackingService()
             progress = tracking_svc.get_progress(journey_id)
             if "history" in progress and progress["history"]:
-                history_items = [f"- {h['action']} (at {h['timestamp']})" for h in progress["history"]]
-                history_context = "\nPREVIOUS ACTIONS TAKEN:\n" + "\n".join(history_items)
+                # ONLY take last 2 items to save tokens
+                last_actions = progress["history"][-2:]
+                history_items = [f"- {h['action']} (at {h['timestamp']})" for h in last_actions]
+                history_context = "\nRECENT ACTIONS:\n" + "\n".join(history_items)
             else:
-                history_context = "\nPREVIOUS ACTIONS TAKEN:\n- No history recorded yet."
+                history_context = "\nRECENT ACTIONS: None."
         
         # 4. Process Real-time Monitoring Data
         monitoring_context = ""
         if monitoring_data:
-            monitoring_context = f"""
-            REAL-TIME IOT SENSOR READINGS (CRITICAL):
-            - Soil Moisture: {monitoring_data.get('soil_moisture')}%
-            - Soil pH: {monitoring_data.get('ph')}
-            - Nitrogen: {monitoring_data.get('nitrogen')} mg/kg
-            - Phosphorus: {monitoring_data.get('phosphorus')} mg/kg
-            - Potassium: {monitoring_data.get('potassium')} mg/kg
-            - Field Temp: {monitoring_data.get('temperature')}°C
-            - Field Humidity: {monitoring_data.get('humidity')}%
-            """
+            monitoring_context = f"IoT: M:{monitoring_data.get('soil_moisture')}% pH:{monitoring_data.get('ph')} N:{monitoring_data.get('nitrogen')} P:{monitoring_data.get('phosphorus')} K:{monitoring_data.get('potassium')} T:{monitoring_data.get('temperature')}C H:{monitoring_data.get('humidity')}%"
         else:
-            monitoring_context = "\nREAL-TIME SENSOR DATA:\n- Offline/No data available."
+            monitoring_context = "IoT: No data."
         
         if "error" not in expert_plan:
             # Find the specific stage in the expert plan
@@ -109,6 +102,12 @@ class AIAgronomistService:
             
             # Indestructible JSON extraction logic
             clean_response = raw_response.strip()
+            
+            # If the response doesn't look like JSON (starts with an error message), return fallback
+            if not clean_response.startswith("{") and "AI error" in clean_response:
+                 logger.error(f"AI_AGRONOMIST: Received error from GeminiService: {clean_response}")
+                 raise ValueError(clean_response)
+
             if "```json" in clean_response:
                 clean_response = clean_response.split("```json")[1].split("```")[0].strip()
             elif "```" in clean_response:
@@ -143,29 +142,16 @@ class AIAgronomistService:
         soil = context.get('soil', 'Unknown')
         
         system_prompt = f"""
-        You are Filahaty AI, a highly advanced agricultural chat assistant. 
-        You act like a real, experienced agronomist explaining things to a farmer.
-        Keep your language Simple, Clear, and Practical. Do NOT use markdown code blocks or structured JSON responses. Simply write conversationally.
-        
-        FARMER'S CURRENT CONTEXT:
-        - Crop: {crop_name}
-        - Growth Stage: {current_stage}
-        - Soil Type: {soil}
-        
-        WEATHER:
-        {weather_data if weather_data else 'No live weather data provided.'}
-        
-        FIELD MONITORING SENSORS:
-        {monitoring_data if monitoring_data else 'No live sensor data provided.'}
-        
-        YOUR INSTRUCTIONS:
-        1. Answer the farmer's question directly and politely.
-        2. Give step-by-step, actionable advice.
-        3. Use the provided context to explain WHY your advice is correct.
-        4. Focus exclusively on problem solving and optimizing their farm operation based directly on their real-time sensor/weather context if applicable.
+        Role: Filahaty AI, expert Algerian agronomist. 
+        Context: Crop:{crop_name}, Stage:{current_stage}, Soil:{soil}.
+        Weather: {weather_data if weather_data else 'None'}.
+        Sensors: {monitoring_data if monitoring_data else 'None'}.
+        Instruction: Answer concisely, step-by-step, no JSON/markdown blocks.
         """
         
-        user_prompt = f"Farmer says: {user_message}"
+        # Truncate user message to 200 chars to save tokens
+        short_message = user_message[:200]
+        user_prompt = f"Farmer says: {short_message}"
         
         full_prompt = f"{system_prompt}\n\n{user_prompt}"
         

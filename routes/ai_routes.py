@@ -8,72 +8,21 @@ from utils.logger import logger
 
 router = APIRouter(prefix="/ai", tags=["AI Assistant"])
 
-def call_ai(prompt):
-    import os
-    import requests
-
-    api_key = os.getenv("OPENROUTER_API_KEY")
-
-    # Debug: log whether the key is present
-    print(f"[AI_CHAT] OPENROUTER_API_KEY present: {bool(api_key)}")
-    logger.info(f"AI_CHAT: OPENROUTER_API_KEY present: {bool(api_key)}")
-
-    if not api_key:
-        logger.error("AI_CHAT: OPENROUTER_API_KEY is missing — cannot call AI.")
-        return "AI error: OPENROUTER_API_KEY not configured. Please contact support."
-
-    try:
-        # Dynamic token control: short prompts need fewer tokens
-        max_tokens = 300 if len(prompt) <= 100 else 500
-        print(f"[AI_CHAT] Sending request to OpenRouter (max_tokens={max_tokens})...")
-        response = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "model": "openai/gpt-4o-mini",
-                "max_tokens": max_tokens,
-                "messages": [
-                    {"role": "user", "content": prompt}
-                ]
-            },
-            timeout=20
-        )
-
-        # Debug: log full status and raw response body
-        print(f"[AI_CHAT] Response status code: {response.status_code}")
-        print(f"[AI_CHAT] Response text: {response.text}")
-        logger.info(f"AI_CHAT: status={response.status_code}")
-        logger.debug(f"AI_CHAT: raw_response={response.text}")
-
-        if response.status_code != 200:
-            logger.error(f"AI_CHAT: OpenRouter returned error {response.status_code}: {response.text}")
-            return f"AI error: OpenRouter returned {response.status_code} — {response.text}"
-
-        # Safe JSON parsing
-        try:
-            data = response.json()
-            content = data["choices"][0]["message"]["content"]
-            return content
-        except (KeyError, IndexError, ValueError) as parse_err:
-            logger.error(f"AI_CHAT: Failed to parse OpenRouter response: {parse_err} | raw: {response.text}")
-            return "AI error: please try again"
-
-    except requests.exceptions.Timeout:
-        logger.error("AI_CHAT: Request to OpenRouter timed out.")
-        return "AI error: request timed out, please try again"
-    except Exception as e:
-        logger.error(f"AI_CHAT: Unexpected error: {str(e)}")
-        return "AI error: please try again"
+async def call_ai(prompt):
+    """
+    Standard simple AI chat call using GeminiService.
+    Ensures consistent token limits and 402 retry logic.
+    """
+    from services.gemini_service import GeminiService
+    ai_svc = GeminiService()
+    return await ai_svc.generate(prompt)
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat_with_ai_endpoint(request: ChatRequest):
     """
     AI works only when endpoint is called.
     """
-    response = call_ai(request.message)
+    response = await call_ai(request.message)
     return ChatResponse(response=response)
 
 @router.post("/chat-advanced", response_model=ChatResponse)
