@@ -30,9 +30,9 @@ class GeminiService:
              return 150
         return 200
 
-    async def generate(self, message: str, retry_count: int = 0):
+    async def generate(self, message: str, retry_count: int = 0, response_format: dict = None):
         """
-        Safe AI execution with dynamic token control and 402 retry logic.
+        Safe AI execution with dynamic token control, 402 retry logic, and JSON schema enforcement.
         """
         api_key = os.getenv("OPENROUTER_API_KEY")
 
@@ -50,23 +50,28 @@ class GeminiService:
 
         try:
             logger.info(f"GEMINI_SVC: Sending chat request (tokens={max_tokens}, retry={retry_count})")
+            payload = {
+                "model": "openai/gpt-4o-mini",
+                "max_tokens": max_tokens,
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "You are an expert agronomist for Algeria. Be concise."
+                    },
+                    {"role": "user", "content": safe_message}
+                ]
+            }
+
+            if response_format:
+                payload["response_format"] = response_format
+
             response = requests.post(
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers={
                     "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json"
                 },
-                json={
-                    "model": "openai/gpt-4o-mini",
-                    "max_tokens": max_tokens,
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": "You are an expert agronomist for Algeria. Be concise."
-                        },
-                        {"role": "user", "content": safe_message}
-                    ]
-                },
+                json=payload,
                 timeout=20
             )
 
@@ -111,9 +116,9 @@ class GeminiService:
             return "AI error: please try again."
 
 
-    async def generate_vision(self, prompt: str, base64_image: str, mime_type: str = "image/jpeg", retry_count: int = 0):
+    async def generate_vision(self, prompt: str, base64_image: str, mime_type: str = "image/jpeg", retry_count: int = 0, response_format: dict = None):
         """
-        Safe Vision AI execution with 402 retry logic.
+        Safe Vision AI execution with 402 retry logic and JSON schema support.
         """
         api_key = os.getenv("OPENROUTER_API_KEY")
 
@@ -129,30 +134,35 @@ class GeminiService:
 
         try:
             logger.info(f"GEMINI_VISION: Sending vision request (tokens={max_tokens})")
+            payload = {
+                "model": "openai/gpt-4o-mini",
+                "max_tokens": max_tokens,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": safe_prompt},
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:{mime_type};base64,{base64_image}"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+
+            if response_format:
+                payload["response_format"] = response_format
+
             response = requests.post(
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers={
                     "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json"
                 },
-                json={
-                    "model": "openai/gpt-4o-mini",
-                    "max_tokens": max_tokens,
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": [
-                                {"type": "text", "text": safe_prompt},
-                                {
-                                    "type": "image_url",
-                                    "image_url": {
-                                        "url": f"data:{mime_type};base64,{base64_image}"
-                                    }
-                                }
-                            ]
-                        }
-                    ]
-                },
+                json=payload,
                 timeout=25
             )
 

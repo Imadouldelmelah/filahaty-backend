@@ -10,30 +10,30 @@ class DiseaseDetectionService:
         """
         Analyzes an image of a plant/crop to detect diseases, stress, or deficiencies.
         """
-        prompt = """
-        You are an expert plant pathologist and agricultural diagnostic AI.
-        Analyze this image of a plant or crop. Identify any visible diseases, pests, nutrient deficiencies, or stress conditions.
-
-        Strictly format your response as a valid JSON object matching this exact schema:
-        {
-            "diagnosis": "Name of the disease or stress factor. Be specific.",
-            "confidence": "High/Medium/Low based on visual clarity",
-            "solution": "Actionable, concrete steps the farmer should take to treat or mitigate this issue."
+        # Define JSON schema for strict vision output
+        json_schema = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "plant_disease_detection",
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "diagnosis": {"type": "string"},
+                        "confidence": {"type": "string", "enum": ["High", "Medium", "Low"]},
+                        "solution": {"type": "string"}
+                    },
+                    "required": ["diagnosis", "confidence", "solution"]
+                }
+            }
         }
-        
-        If the plant appears perfectly healthy, return:
-        {
-            "diagnosis": "Healthy",
-            "confidence": "High",
-            "solution": "Continue routine monitoring and maintenance."
-        }
-
-        Do NOT include any text outside the JSON object. Do not include markdown code block syntax around the JSON.
-        """
         
         try:
             logger.info("Starting visual disease detection...")
-            raw_response = await self._ai.generate_vision(prompt, base64_image, mime_type)
+            
+            # Revised prompt for schema-based vision support
+            vision_prompt = "Identify diseases, pests, or deficiencies in this plant image and suggest solutions."
+            
+            raw_response = await self._ai.generate_vision(vision_prompt, base64_image, mime_type, response_format=json_schema)
             
             clean_response = raw_response.strip()
             if clean_response.startswith("```json"):

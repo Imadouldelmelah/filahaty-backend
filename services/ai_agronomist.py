@@ -94,19 +94,29 @@ class AIAgronomistService:
         
         STRICT OUTPUT FORMAT:
         You MUST return valid JSON only. No explanation.
-        
-        REQUIRED SCHEMA:
-        {{
-            "stage": "Growth",
-            "tasks": ["Water plants", "Check soil moisture"],
-            "advice": "Maintain moderate irrigation",
-            "alerts": []
-        }}
         """
+
+        # Define OpenRouter strict JSON schema
+        json_schema = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "farming_journey",
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "stage": {"type": "string"},
+                        "tasks": {"type": "array", "items": {"type": "string"}},
+                        "advice": {"type": "string"},
+                        "alerts": {"type": "array", "items": {"type": "string"}}
+                    },
+                    "required": ["stage", "tasks", "advice", "alerts"]
+                }
+            }
+        }
         
         try:
             logger.info(f"AI_AGRONOMIST: Generating advice for {crop_name} (retry={is_retry})")
-            raw_response = await self._ai.generate(prompt)
+            raw_response = await self._ai.generate(prompt, response_format=json_schema)
             
             # Log raw response for debugging JSON failure
             logger.debug(f"AI_AGRONOMIST_RAW: {raw_response}")
