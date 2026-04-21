@@ -7,10 +7,10 @@ class AIAgronomistService:
     def __init__(self):
         self._ai = GeminiService()
 
-    async def generate_advice(self, context: dict):
+    async def generate_advice(self, context: dict, is_retry: bool = False):
         """
-        Generates structured agricultural advice based on a hybrid system:
-        Expert Rules (Agronomy Engine) + AI Intelligence (OpenRouter/Gemini).
+        Generates structured agricultural advice based on a hybrid system.
+        Supports a 'simplified retry' mode if the first AI response is unparseable.
         """
         crop_name = context.get('crop_name', '')
         current_stage_name = context.get('current_stage', '')
@@ -23,7 +23,8 @@ class AIAgronomistService:
         expert_plan = get_crop_plan(crop_name)
         
         scientific_insights = ""
-        if weather_data:
+        # Skip detailed weather analysis on retry to save tokens and simplify
+        if weather_data and not is_retry:
             from services.weather_intelligence import WeatherIntelligenceService
             weather_intel = WeatherIntelligenceService()
             insights = weather_intel.analyze_weather(weather_data)
@@ -31,14 +32,14 @@ class AIAgronomistService:
             recs = "\n".join([f"* {r}" for r in insights['recommendations']])
             scientific_insights = f"\nSCIENTIFIC WEATHER GUARDRAILS (MANDATORY):\n{alerts}\n{recs}"
         
-        # 3. Fetch Journey History (Context Memory) - LIMIT TO LAST 2 ITEMS FOR TOKENS
+        # 3. Fetch Journey History - SKIPPED ON RETRY
         history_context = ""
-        if journey_id:
+        if journey_id and not is_retry:
             from services.tracking_service import TrackingService
             tracking_svc = TrackingService()
             progress = tracking_svc.get_progress(journey_id)
             if "history" in progress and progress["history"]:
-                # ONLY take last 2 items to save tokens
+                # ONLY take last 2 items
                 last_actions = progress["history"][-2:]
                 history_items = [f"- {h['action']} (at {h['timestamp']})" for h in last_actions]
                 history_context = "\nRECENT ACTIONS:\n" + "\n".join(history_items)
@@ -72,7 +73,12 @@ class AIAgronomistService:
             logger.warning(f"No expert plan found for crop: {crop_name}")
 
         # 2. Construct the Hybrid Prompt
+        retry_warning = ""
+        if is_retry:
+            retry_warning = "CRITICAL: YOUR PREVIOUS ATTEMPT WAS INVALID. REPLY WITH ONLY THE JSON OBJECT BELOW.\n"
+
         prompt = f"""
+        {retry_warning}
         ACT AS: A Senior Algerian Agronomist.
         TASK: Provide context-aware advice combining expert rules and real-time sensor data.
         
@@ -87,47 +93,62 @@ class AIAgronomistService:
         {expert_rules}
         
         STRICT OUTPUT FORMAT:
-        Return ONLY valid JSON. No markdown backticks. No explanation outside JSON.
+        You MUST return valid JSON only. No explanation.
         
         REQUIRED SCHEMA:
         {{
-            "advice": "Grounded expert advice string.",
-            "actions": ["Step 1", "Step 2", ...]
+            "stage": "Growth",
+            "tasks": ["Water plants", "Check soil moisture"],
+            "advice": "Maintain moderate irrigation",
+            "alerts": []
         }}
         """
         
         try:
-            logger.info(f"AI_AGRONOMIST: Generating advice for {crop_name}")
+            logger.info(f"AI_AGRONOMIST: Generating advice for {crop_name} (retry={is_retry})")
             raw_response = await self._ai.generate(prompt)
+            
+            # Log raw response for debugging JSON failure
+            logger.debug(f"AI_AGRONOMIST_RAW: {raw_response}")
             
             # Indestructible JSON extraction logic
             clean_response = raw_response.strip()
             
-            # If the response doesn't look like JSON (starts with an error message), return fallback
+            # Check for service-level errors
             if not clean_response.startswith("{") and "AI error" in clean_response:
-                 logger.error(f"AI_AGRONOMIST: Received error from GeminiService: {clean_response}")
-                 raise ValueError(clean_response)
+                 logger.error(f"AI_AGRONOMIST: Service error: {clean_response}")
+                 raise ValueError("Service error")
 
-            if "```json" in clean_response:
-                clean_response = clean_response.split("```json")[1].split("```")[0].strip()
-            elif "```" in clean_response:
-                clean_response = clean_response.split("```")[1].split("```")[0].strip()
-                
+            # Deep cleaning: find first { and last }
             start_idx = clean_response.find("{")
             end_idx = clean_response.rfind("}")
             
             if start_idx == -1 or end_idx == -1:
-                raise ValueError("JSON braces not found in AI response")
+                raise ValueError("JSON braces not found")
                 
             json_str = clean_response[start_idx : end_idx + 1]
-            return json.loads(json_str)
+            data = json.loads(json_str)
+            
+            # Auto-repair schema
+            required_keys = ["stage", "tasks", "advice", "alerts"]
+            for key in required_keys:
+                if key not in data:
+                    data[key] = "Unknown" if key != "tasks" and key != "alerts" else []
+            
+            return data
             
         except Exception as e:
-            logger.error(f"AI_AGRONOMIST_FAILURE: {str(e)}")
-            # Guaranteed robust fallback advice
+            if not is_retry:
+                logger.warning(f"AI_AGRONOMIST_RETRY: Initial attempt failed ({str(e)}). Retrying with simplified prompt...")
+                return await self.generate_advice(context, is_retry=True)
+                
+            logger.error(f"AI_AGRONOMIST_TOTAL_FAILURE: {str(e)} | raw: {raw_response if 'raw_response' in locals() else 'None'}")
+            # Final safety fallback
             return {
-                "advice": "Our real-time analysis engine is currently syncing. Please follow standard watering and monitoring procedures for this growth stage.",
-                "actions": ["Check soil moisture manually", "Inspect leaves for any early signs of pest activity"]
+                "stage": current_stage_name or "Unknown",
+                "tasks": ["Check field conditions", "Monitor soil moisture"],
+                "advice": "Our AI advisor is currently performing maintenance. Please follow standard regional protocols.",
+                "alerts": []
             }
 
     async def generate_advanced_chat(self, context: dict, user_message: str) -> str:
