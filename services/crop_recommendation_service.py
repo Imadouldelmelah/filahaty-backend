@@ -105,16 +105,42 @@ class CropRecommendationService:
             return final_result
 
         except Exception as e:
-            # Task 5 & 7: Robust Fallback and Error Logging
-            logger.error(f"CROP_RECOMMENDATION_ENGINE_FAILURE: {str(e)}")
-            print(f"[AI_AUDIT] CRITICAL_FAILURE: {str(e)}")
+            # Robust fallback to rule-based expert system
+            logger.error(f"CROP_RECOMMENDATION_AI_FAILURE: {str(e)}")
+            return self._get_rule_based_fallback(context)
+
+    def _get_rule_based_fallback(self, context: dict) -> dict:
+        """
+        Agronomy-based expert system fallback when AI is unavailable.
+        Uses temperature, humidity, and pH rules.
+        """
+        # 1. Decision Logic based on USER requirements:
+        # IF temperature > 30: corn
+        # IF humidity > 80: rice
+        # IF pH < 6: potato
+        
+        temp = context.get("temperature", 0)
+        humidity = context.get("humidity", 0)
+        ph = context.get("ph", 7.0)
+        
+        crop = "Wheat" # Default
+        reason = "AI recommendation engine is recovering. Recommending stable Algerian Wheat based on historic soil resilience."
+        
+        if temp > 30:
+            crop = "Corn"
+            reason = f"High temperature detected ({temp}°C). Recommending heat-tolerant Corn as a resilient fallback."
+        elif humidity > 80:
+            crop = "Rice"
+            reason = f"High humidity detected ({humidity}%). Recommending Rice based on moisture compatibility."
+        elif ph < 6:
+            crop = "Potato"
+            reason = f"Acidic soil detected (pH {ph}). Recommending Potato as it thrives in lower pH conditions."
             
-            # Static Fallback System (Guaranteed valid JSON)
-            return {
-                "crop": "Wheat",
-                "confidence": 50,
-                "reason": "AI recommendation engine is recovering from a timeout. Recommending stable Algerian Wheat based on historic soil resilience.",
-                "status": "system_fallback"
-            }
+        return {
+            "crop": crop,
+            "confidence": 60, # Standard medium confidence for rule-based engine
+            "reason": reason,
+            "status": "rule_engine_fallback"
+        }
 
 # Export the class for late local instantiation
