@@ -83,13 +83,13 @@ except Exception as e:
 async def startup_event():
     import os
     # Verify critical settings on startup with explicit debug output
-    api_key = os.getenv("OPENROUTER_API_KEY")
+    api_key = os.getenv("DEEPSEEK_API_KEY")
     if api_key:
-        print(f"[STARTUP] OPENROUTER_API_KEY loaded: YES (length={len(api_key)})")
-        logger.info("STARTUP: OPENROUTER_API_KEY is present and loaded.")
+        print(f"[STARTUP] DEEPSEEK_API_KEY loaded: YES (length={len(api_key)})")
+        logger.info("STARTUP: DEEPSEEK_API_KEY is present and loaded.")
     else:
-        print("[STARTUP] OPENROUTER_API_KEY loaded: NO — AI features will fail!")
-        logger.error("STARTUP_ERROR: OPENROUTER_API_KEY is missing. Check .env or environment variables.")
+        print("[STARTUP] DEEPSEEK_API_KEY loaded: NO — AI features will fail!")
+        logger.error("STARTUP_ERROR: DEEPSEEK_API_KEY is missing. Check .env or environment variables.")
 
     if not settings.NEWS_API_KEY:
         logger.warning("SECURITY_ALERT: NEWS_API_KEY is missing. News features will be disabled.")

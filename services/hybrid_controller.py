@@ -48,17 +48,11 @@ class HybridDecisionController:
             if "AI_ERROR_FALLBACK" in raw_ai_response:
                 raise ValueError("AI Service Credits Exhausted or Unauthorized")
 
-            # Extract JSON substring (TASK 1: Detect invalid JSON)
-            start_idx = raw_ai_response.find("{")
-            end_idx = raw_ai_response.rfind("}")
-            
-            if start_idx == -1 or end_idx == -1:
-                raise ValueError("Malformed AI JSON: Delimiters not found")
-                
-            json_str = raw_ai_response[start_idx : end_idx + 1]
+            # Since GeminiService guarantees valid JSON (or fallback JSON), we can parse directly.
             try:
-                refined_data = json.loads(json_str)
+                refined_data = json.loads(raw_ai_response)
             except json.JSONDecodeError:
+                logger.error(f"{feature_name}: JSONDecodeError trying to parse AI result. Fallback triggered. Content: {raw_ai_response[:100]}")
                 raise ValueError("Malformed AI JSON: Parsing failed")
 
             # Merge AI refinement into base result

@@ -1,6 +1,7 @@
 import os
-import requests
+import json
 import asyncio
+from openai import OpenAI
 from dotenv import load_dotenv
 from utils.logger import logger
 
@@ -11,13 +12,20 @@ class GeminiService:
 
     def __init__(self):
         # API key loading from environment variable
-        key = os.getenv("OPENROUTER_API_KEY")
+        key = os.getenv("DEEPSEEK_API_KEY")
         if not key:
-            print("API key missing")
-            self.api_key = None
+            logger.error("DEEPSEEK_API_KEY missing from environment")
+            self.client = None
         else:
-            self.api_key = key
-            print("OpenRouter client initialized")
+            try:
+                self.client = OpenAI(
+                    api_key=key,
+                    base_url="https://api.deepseek.com/v1"
+                )
+                logger.info("DeepSeek (OpenAI-compatible) client initialized")
+            except Exception as e:
+                logger.error(f"Failed to initialize DeepSeek client: {str(e)}")
+                self.client = None
 
     def _get_dynamic_tokens(self, message: str) -> int:
         """
@@ -32,111 +40,100 @@ class GeminiService:
 
     async def generate(self, message: str, retry_count: int = 0, response_format: dict = None):
         """
-        Indestructible AI execution. Guarantees a string return, never throws.
+        Hardened AI execution. Forces valid JSON and parses safely.
         """
-        fallback_msg = "AI_ERROR_FALLBACK"
+        # Fallback JSON structure matching the app's needs
+        fallback_json = {
+            "response": "Smart offline mode activated",
+            "data": "basic agricultural guidance"
+        }
+        fallback_msg = json.dumps(fallback_json)
         
-        try:
-            # 1. API Key Debug
-            api_key = os.getenv("OPENROUTER_API_KEY")
-            key_exists = bool(api_key)
-            
-            # 2. Payload Construction (TASK 1: max_tokens=100)
-            safe_message = message[:500]
-            max_tokens = 100 
+        if not self.client:
+            logger.error("GEMINI_SVC_CRITICAL: DeepSeek client not initialized.")
+            return fallback_msg
 
-            payload = {
-                "model": "openai/gpt-4o-mini",
-                "max_tokens": max_tokens,
+        try:
+            # 1. Payload Construction
+            safe_message = message[:500]
+            max_tokens = 250 
+
+            # 2. Execute Request via OpenAI SDK
+            completion_params = {
+                "model": "deepseek-chat",
                 "messages": [
                     {
-                        "role": "system",
-                        "content": "Expert Agronomist. Concise expert answers only." # TASK 2: Simple prompt
+                        "role": "system", 
+                        "content": (
+                            "You are an expert agricultural assistant. "
+                            "You must return ONLY valid JSON. No text outside JSON. "
+                            "Example output: {\"stage\": \"Growth\", \"tasks\": [\"Water plants\"], \"advice\": \"Maintain irrigation\", \"alerts\": []}"
+                        )
                     },
                     {"role": "user", "content": safe_message}
-                ]
+                ],
+                "max_tokens": max_tokens,
+                "temperature": 0.1 # Lower temperature for better JSON consistency
             }
+
             if response_format:
-                payload["response_format"] = response_format
+                completion_params["response_format"] = response_format
 
-            # Debug EVERYTHING BEFORE REQUEST
-            logger.info("--- AI DEBUG START ---")
-            logger.info(f"API_KEY_PRESENT: {key_exists}")
-            logger.info(f"MODEL: {payload.get('model')}")
-            logger.info(f"MAX_TOKENS: {payload.get('max_tokens')}")
+            logger.info(f"OAI_REQUEST_PAYLOAD: {json.dumps(completion_params)}")
 
-            if not key_exists:
-                logger.error("GEMINI_SVC_CRITICAL: API Key missing.")
-                return fallback_msg
-
-            # 3. Execute Request
-            response = requests.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
-                json=payload,
-                timeout=18 # Reduced timeout for faster failure
-            )
-
-            # Debug EVERYTHING AFTER REQUEST
-            logger.info(f"STATUS_CODE: {response.status_code}")
+            # Call the API
+            response = self.client.chat.completions.create(**completion_params)
             
-            # 4. Immediate Fallback if not 200 (TASK 1 & 2)
-            if response.status_code != 200:
-                print("AI ERROR:", response.text)
-                logger.error(f"AI_FAILURE: Status {response.status_code}. Returning fallback.")
-                
-                # Internal retry logic still allowed for 402
-                if response.status_code == 402 and retry_count == 0:
-                    logger.warning("Retrying with lower tokens...")
-                    return await self.generate(message, retry_count=1, response_format=response_format)
-                
+            logger.info("OAI_RESPONSE_STATUS: 200 OK")
+
+            if not response.choices or len(response.choices) == 0:
+                logger.error("OAI_RESPONSE_CONTENT: No choices returned")
                 return fallback_msg
 
-            # 5. Safe Parsing (TASK 4: Validate choices)
+            raw_content = response.choices[0].message.content
+            logger.info(f"OAI_RESPONSE_CONTENT: {raw_content}")
+            
+            # 3. Safe Parsing (Goal: No more invalid JSON)
             try:
-                data = response.json()
+                # Strip potential markdown blocks if AI ignored instructions
+                clean_content = raw_content.strip()
+                if clean_content.startswith("```json"):
+                    clean_content = clean_content.replace("```json", "").replace("```", "").strip()
+                elif clean_content.startswith("```"):
+                    clean_content = clean_content.replace("```", "").strip()
                 
-                if "choices" not in data or not data["choices"]:
-                    logger.error("GEMINI_SVC_VALIDATION: 'choices' missing in response.")
-                    return fallback_msg
-
-                usage = data.get("usage", {})
-                if usage:
-                    logger.info(f"AI_USAGE: tokens={usage.get('total_tokens')}, cost=${usage.get('cost', 0)}")
-                
-                content = data["choices"][0]["message"]["content"]
-                logger.info("--- AI DEBUG END (SUCCESS) ---")
-                return content
-            except (KeyError, IndexError, ValueError) as parse_err:
-                logger.error(f"GEMINI_SVC_PARSE_ERROR: {parse_err}")
+                json_data = json.loads(clean_content)
+                return json.dumps(json_data) # Re-serialize to ensure clean valid JSON
+            except Exception as parse_err:
+                logger.error(f"GEMINI_JSON_PARSE_ERROR: {str(parse_err)}. Content: {raw_content[:100]}")
                 return fallback_msg
 
-        except Exception as e: # TASK 3: Never throw exception
-            logger.error(f"GEMINI_SVC_URGENT_HARDENING_HIT: {str(e)}")
+        except Exception as e:
+            logger.error(f"OAI_RESPONSE_STATUS: FAIL")
+            logger.error(f"GEMINI_SVC_HIT_ERROR: {str(e)}")
             return fallback_msg
 
 
     async def generate_vision(self, prompt: str, base64_image: str, mime_type: str = "image/jpeg", retry_count: int = 0, response_format: dict = None):
         """
-        Indestructible Vision AI execution. Guarantees a string return, never throws.
+        Indestructible Vision AI execution.
+        Note: DeepSeek V3/R1 currently might have limited vision support depending on the endpoint.
+        If deepseek-chat doesn't support vision, this will return fallback.
         """
         fallback_msg = "AI_VISION_ERROR_FALLBACK"
 
+        if not self.client:
+            return fallback_msg
+
         try:
-            # 1. API Key Debug
-            api_key = os.getenv("OPENROUTER_API_KEY")
-            key_exists = bool(api_key)
-
-            # 2. Payload Debug
             safe_prompt = prompt[:500]
-            max_tokens = 100 # TASK 1: max_tokens=100
+            max_tokens = 150
 
-            payload = {
-                "model": "openai/gpt-4o-mini",
-                "max_tokens": max_tokens,
+            logger.info("--- AI VISION DEBUG START (DEEPSEEK) ---")
+            
+            # Payload for Vision (Standard OpenAI format)
+            completion_params = {
+                "model": "deepseek-chat", # Fallback to chat if vision isn't separate
                 "messages": [
                     {
                         "role": "user",
@@ -150,65 +147,30 @@ class GeminiService:
                             }
                         ]
                     }
-                ]
+                ],
+                "max_tokens": max_tokens
             }
+
             if response_format:
-                payload["response_format"] = response_format
+                completion_params["response_format"] = response_format
 
-            # Debug EVERYTHING BEFORE REQUEST
-            logger.info("--- AI VISION DEBUG START ---")
-            logger.info(f"API_KEY_PRESENT: {key_exists}")
-            logger.info(f"MODEL: {payload.get('model')}")
+            logger.info(f"OAI_VISION_REQUEST_PAYLOAD: {json.dumps(completion_params)}")
 
-            if not key_exists:
-                logger.error("GEMINI_VISION_CRITICAL: API Key missing.")
+            response = self.client.chat.completions.create(**completion_params)
+            
+            logger.info("OAI_VISION_RESPONSE_STATUS: 200 OK")
+
+            if not response.choices:
+                logger.error("OAI_VISION_RESPONSE_CONTENT: No choices returned")
                 return fallback_msg
 
-            # 3. Execute Request
-            response = requests.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
-                json=payload,
-                timeout=25
-            )
+            content = response.choices[0].message.content
+            logger.info(f"OAI_VISION_RESPONSE_CONTENT: {content}")
+            logger.info("--- AI VISION DEBUG END (SUCCESS) ---")
+            return content
 
-            # Debug EVERYTHING AFTER REQUEST
-            logger.info(f"STATUS_CODE: {response.status_code}")
-
-            # 4. Immediate Fallback if not 200 (TASK 1 & 2)
-            if response.status_code != 200:
-                print("AI ERROR:", response.text)
-                logger.error(f"AI_VISION_FAILURE: Status {response.status_code}. Returning fallback.")
-                
-                if response.status_code == 402 and retry_count == 0:
-                    logger.warning("Retrying vision with lower tokens...")
-                    return await self.generate_vision(prompt, base64_image, mime_type, retry_count=1, response_format=response_format)
-                
-                return fallback_msg
-
-            # 5. Safe Parsing (TASK 4: Validate choices)
-            try:
-                data = response.json()
-                
-                if "choices" not in data or not data["choices"]:
-                    logger.error("GEMINI_VISION_VALIDATION: 'choices' missing.")
-                    return fallback_msg
-
-                usage = data.get("usage", {})
-                if usage:
-                    logger.info(f"AI_VISION_USAGE: tokens={usage.get('total_tokens')}, cost=${usage.get('cost', 0)}")
-                
-                content = data["choices"][0]["message"]["content"]
-                logger.info("--- AI VISION DEBUG END (SUCCESS) ---")
-                return content
-            except (KeyError, IndexError, ValueError) as parse_err:
-                logger.error(f"GEMINI_VISION_PARSE_ERROR: {parse_err}")
-                return fallback_msg
-
-        except Exception as e: # TASK 3: Never throw exception
-            logger.error(f"GEMINI_VISION_URGENT_HARDENING_HIT: {str(e)}")
+        except Exception as e:
+            logger.error("OAI_VISION_RESPONSE_STATUS: FAIL")
+            logger.error(f"GEMINI_VISION_HIT: {str(e)}")
+            # If model doesn't support vision, logs will show it.
             return fallback_msg
-

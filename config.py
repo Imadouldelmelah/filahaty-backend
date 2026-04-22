@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     ]
     
     # API Keys (Validated)
-    OPENROUTER_API_KEY: Optional[str] = None
+    DEEPSEEK_API_KEY: Optional[str] = None
     NEWS_API_KEY: Optional[str] = None
     
     model_config = SettingsConfigDict(

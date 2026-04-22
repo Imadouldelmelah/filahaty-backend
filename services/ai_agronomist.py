@@ -21,20 +21,19 @@ class AIAgronomistService:
         async def ai_refinement():
             base_advice = get_rule_based_advice(crop_name, current_stage)
             prompt = f"""
-            ACT AS: Supportive Algerian Agronomist.
-            TASK: Humanize and explain existing expert tasks.
-            CONTEXT: {crop_name} at {current_stage} stage.
-            EXPERT_TASKS: {base_advice['tasks']}
+            Generate farming journey for crop: {crop_name} at stage: {current_stage}.
+            You must return ONLY valid JSON.
             
-            INSTRUCTIONS:
-            1. DO NOT change the growth stage or core tasks.
-            2. Provide a supportive, conversational explanation of WHY these tasks are important.
-            3. Use a tone suitable for a local farmer.
-            
-            FORMAT: JSON only.
-            SCHEMA: {{"stage": "{current_stage}", "tasks": {base_advice['tasks']}, "advice": "Supportive explanation...", "alerts": []}}
+            Ensure the response strictly follows this JSON format:
+            {{
+                "stage": "{current_stage}",
+                "tasks": {json.dumps(base_advice['tasks'])},
+                "advice": "Explain why these tasks are important and provide expert advice.",
+                "alerts": []
+            }}
             """
-            return await self._ai.generate(prompt)
+            # Pass response_format for DeepSeek compliance
+            return await self._ai.generate(prompt, response_format={"type": "json_object"})
 
         # Execute via Controller
         return await HybridDecisionController.execute(
