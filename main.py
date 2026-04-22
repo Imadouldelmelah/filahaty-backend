@@ -114,6 +114,7 @@ def test_deepseek():
             base_url="https://api.deepseek.com/v1"
         )
         
+        print("Sending request to DeepSeek...")
         response = client.chat.completions.create(
             model="deepseek-chat",
             messages=[{"role": "user", "content": "Say hello"}],

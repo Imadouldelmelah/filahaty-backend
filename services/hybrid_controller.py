@@ -38,37 +38,26 @@ class HybridDecisionController:
         # 2. Step 2 & 3: Try AI Refinement
         try:
             logger.info(f"{feature_name}: Attempting AI refinement...")
-            # Run AI with a timeout to prevent hanging
-            raw_ai_response = await asyncio.wait_for(ai_func(), timeout=15)
+            response = await asyncio.wait_for(ai_func(), timeout=15)
             
-            # TASK 1: Detect failure scenarios
-            if not raw_ai_response or not isinstance(raw_ai_response, str) or raw_ai_response.strip() == "":
-                raise ValueError("Empty or invalid AI response")
+            if response and len(response) > 0:
+                # If Gemini internally swallowed an error and gave us the offline response, treat it as failure
+                if "Smart offline mode activated" in response:
+                    raise Exception("AI returned offline mode internally")
+                    
+                refined_data = json.loads(response)
                 
-            if "AI_ERROR_FALLBACK" in raw_ai_response:
-                raise ValueError("AI Service Credits Exhausted or Unauthorized")
-
-            # Since GeminiService guarantees valid JSON (or fallback JSON), we can parse directly.
-            try:
-                refined_data = json.loads(raw_ai_response)
-            except json.JSONDecodeError:
-                logger.error(f"{feature_name}: JSONDecodeError trying to parse AI result. Fallback triggered. Content: {raw_ai_response[:100]}")
-                raise ValueError("Malformed AI JSON: Parsing failed")
-
-            # Merge AI refinement into base result
-            if protected_keys:
-                # Remove protected keys from AI data to prevent overwrite
-                for p_key in protected_keys:
-                    if p_key in refined_data:
-                        logger.info(f"{feature_name}: Blocking AI overwrite of protected key '{p_key}'")
-                        del refined_data[p_key]
-
-            base_result.update(refined_data)
-            base_result["status"] = "ai_optimized"
-            
-            logger.info(f"{feature_name}: AI Optimization Success")
+                # Merge AI refinement
+                if protected_keys:
+                    for p_key in protected_keys:
+                        if p_key in refined_data: del refined_data[p_key]
+                base_result.update(refined_data)
+                base_result["status"] = "ai_optimized"
+                
+                return base_result
 
         except Exception as e:
+            print("AI FAILED:", str(e))
             logger.warning(f"{feature_name}_AI_SKIPPED: {str(e)}. Using safe baseline.")
             base_result["status"] = "offline_optimized"
             base_result["message"] = "Smart offline mode activated"

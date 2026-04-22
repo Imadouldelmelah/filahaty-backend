@@ -18,6 +18,7 @@ class GeminiService:
             logger.error("DEEPSEEK_API_KEY missing from environment")
             self.client = None
         else:
+            print("API KEY:", DEEPSEEK_API_KEY[:5])
             try:
                 self.client = OpenAI(
                     api_key=DEEPSEEK_API_KEY,
@@ -82,37 +83,29 @@ class GeminiService:
 
             logger.info(f"OAI_REQUEST_PAYLOAD: {json.dumps(completion_params)}")
 
+            print("Sending request to DeepSeek...")
             # Call the API
             response = self.client.chat.completions.create(**completion_params)
+            print("Response:", response)
             
             logger.info("OAI_RESPONSE_STATUS: 200 OK")
 
             if not response.choices or len(response.choices) == 0:
                 logger.error("OAI_RESPONSE_CONTENT: No choices returned")
-                return fallback_msg
+                raise Exception("Empty response from AI")
 
             raw_content = response.choices[0].message.content
             logger.info(f"OAI_RESPONSE_CONTENT: {raw_content}")
             
-            # 3. Safe Parsing (Goal: No more invalid JSON)
-            try:
-                # Strip potential markdown blocks if AI ignored instructions
-                clean_content = raw_content.strip()
-                if clean_content.startswith("```json"):
-                    clean_content = clean_content.replace("```json", "").replace("```", "").strip()
-                elif clean_content.startswith("```"):
-                    clean_content = clean_content.replace("```", "").strip()
-                
-                json_data = json.loads(clean_content)
-                return json.dumps(json_data) # Re-serialize to ensure clean valid JSON
-            except Exception as parse_err:
-                logger.error(f"GEMINI_JSON_PARSE_ERROR: {str(parse_err)}. Content: {raw_content[:100]}")
-                return fallback_msg
+            return raw_content
 
         except Exception as e:
+            print("Error:", e)
+            if hasattr(e, 'status_code'):
+                print("Status Code:", e.status_code)
             logger.error(f"OAI_RESPONSE_STATUS: FAIL")
             logger.error(f"GEMINI_SVC_HIT_ERROR: {str(e)}")
-            return fallback_msg
+            raise e
 
 
     async def generate_vision(self, prompt: str, base64_image: str, mime_type: str = "image/jpeg", retry_count: int = 0, response_format: dict = None):
@@ -157,13 +150,15 @@ class GeminiService:
 
             logger.info(f"OAI_VISION_REQUEST_PAYLOAD: {json.dumps(completion_params)}")
 
+            print("Sending request to DeepSeek...")
             response = self.client.chat.completions.create(**completion_params)
+            print("Response:", response)
             
             logger.info("OAI_VISION_RESPONSE_STATUS: 200 OK")
 
             if not response.choices:
                 logger.error("OAI_VISION_RESPONSE_CONTENT: No choices returned")
-                return fallback_msg
+                raise Exception("Empty vision response from AI")
 
             content = response.choices[0].message.content
             logger.info(f"OAI_VISION_RESPONSE_CONTENT: {content}")
@@ -171,7 +166,9 @@ class GeminiService:
             return content
 
         except Exception as e:
+            print("Error:", e)
+            if hasattr(e, 'status_code'):
+                print("Status Code:", e.status_code)
             logger.error("OAI_VISION_RESPONSE_STATUS: FAIL")
             logger.error(f"GEMINI_VISION_HIT: {str(e)}")
-            # If model doesn't support vision, logs will show it.
-            return fallback_msg
+            raise e
