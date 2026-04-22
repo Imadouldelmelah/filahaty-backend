@@ -104,6 +104,29 @@ def root():
         "security_level": "High"
     }
 
+@app.get("/test-deepseek")
+def test_deepseek():
+    import os
+    from openai import OpenAI
+    try:
+        client = OpenAI(
+            api_key=os.getenv("DEEPSEEK_API_KEY"),
+            base_url="https://api.deepseek.com/v1"
+        )
+        
+        response = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": "Say hello"}],
+            max_tokens=20
+        )
+        
+        return {"response": response.choices[0].message.content}
+        
+    except Exception as e:
+        print(f"DeepSeek Test Error: {str(e)}")
+        return {"error": str(e)}
+
+
 if __name__ == "__main__":
     import uvicorn
     import os

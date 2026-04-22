@@ -12,14 +12,15 @@ class GeminiService:
 
     def __init__(self):
         # API key loading from environment variable
-        key = os.getenv("DEEPSEEK_API_KEY")
-        if not key:
+        DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+        if not DEEPSEEK_API_KEY:
+            print("ERROR: DEEPSEEK_API_KEY missing")
             logger.error("DEEPSEEK_API_KEY missing from environment")
             self.client = None
         else:
             try:
                 self.client = OpenAI(
-                    api_key=key,
+                    api_key=DEEPSEEK_API_KEY,
                     base_url="https://api.deepseek.com/v1"
                 )
                 logger.info("DeepSeek (OpenAI-compatible) client initialized")
