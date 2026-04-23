@@ -45,18 +45,27 @@ class HybridDecisionController:
                 if "Smart offline mode activated" in response:
                     raise Exception("AI returned offline mode internally")
                     
-                # Extract JSON manually for non-strict models
-                start_idx = response.find("{")
-                end_idx = response.rfind("}")
+                refined_data = None
                 
-                if start_idx != -1 and end_idx != -1 and start_idx <= end_idx:
-                    json_str = response[start_idx:end_idx + 1]
-                    try:
-                        refined_data = json.loads(json_str)
-                    except json.JSONDecodeError as decode_err:
-                        raise Exception(f"Safely caught JSON parsing failure: {str(decode_err)}")
-                else:
-                    raise Exception("No JSON structure found in AI response")
+                # 1. Try parse JSON directly
+                try:
+                    refined_data = json.loads(response)
+                except json.JSONDecodeError:
+                    # 2. If fail: extract manually
+                    logger.info(f"{feature_name}: Direct JSON parse failed, attempting manual extraction.")
+                    start_idx = response.find("{")
+                    end_idx = response.rfind("}")
+                    
+                    if start_idx != -1 and end_idx != -1 and start_idx <= end_idx:
+                        json_str = response[start_idx:end_idx + 1]
+                        try:
+                            refined_data = json.loads(json_str)
+                        except json.JSONDecodeError:
+                            logger.error(f"{feature_name}: Manual JSON extraction failed.")
+                
+                # 3. If still fail: return default/baseline JSON (handled by the outer exception block)
+                if not refined_data:
+                    raise Exception("Failed to obtain valid JSON from AI response")
                 
                 # Merge AI refinement
                 if protected_keys:

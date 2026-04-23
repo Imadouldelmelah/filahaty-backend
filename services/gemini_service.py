@@ -1,7 +1,8 @@
 import os
 import json
 import asyncio
-from openai import AsyncOpenAI
+import time
+from openai import OpenAI
 from dotenv import load_dotenv
 from utils.logger import logger
 
@@ -12,22 +13,16 @@ class GeminiService:
 
     def __init__(self):
         # API key loading from environment variable
-        API_KEY = os.getenv("OPENROUTER_API_KEY")
-        if not API_KEY:
-            raise Exception("Missing API key")
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+             raise Exception("Missing OpenAI API key")
         
-        print("API KEY:", API_KEY[:5])
         try:
-            self.client = AsyncOpenAI(
-                api_key=API_KEY,
-                base_url="https://openrouter.ai/api/v1",
-                default_headers={
-                    "Authorization": f"Bearer {API_KEY}"
-                }
-            )
-            logger.info("OpenRouter client initialized")
+            from openai import OpenAI
+            self.client = OpenAI()
+            logger.info("OpenAI client initialized")
         except Exception as e:
-            logger.error(f"Failed to initialize OpenRouter client: {str(e)}")
+            logger.error(f"Failed to initialize OpenAI client: {str(e)}")
             self.client = None
     def _get_dynamic_tokens(self, message: str) -> int:
         """
@@ -63,21 +58,13 @@ class GeminiService:
             max_tokens = 100 
 
             if require_json:
-                system_instruction = (
-                    "Respond ONLY in JSON format. No text before or after.\n"
-                    "Example:\n"
-                    "{\n"
-                    "\"crop\": \"tomato\",\n"
-                    "\"confidence\": \"high\",\n"
-                    "\"reason\": \"...\"\n"
-                    "}"
-                )
+                system_instruction = "Respond ONLY in JSON. Short entries."
             else:
-                system_instruction = "You are a helpful expert agricultural assistant. Answer concisely and clearly."
+                system_instruction = "You are an expert agronomist. Answer concisely."
 
             # 2. Execute Request via OpenAI SDK
             completion_params = {
-                "model": "z-ai/glm-4.5-air:free",
+                "model": "gpt-4o-mini",
                 "messages": [
                     {
                         "role": "system", 
@@ -85,7 +72,7 @@ class GeminiService:
                     },
                     {"role": "user", "content": safe_message}
                 ],
-                "max_tokens": max_tokens,
+                "max_tokens": 150,
                 "temperature": 0.1 # Lower temperature for better JSON consistency
             }
 
@@ -94,13 +81,22 @@ class GeminiService:
 
             logger.info(f"OAI_REQUEST_PAYLOAD: {json.dumps(completion_params)}")
 
-            print("Sending request to DeepSeek...")
-            # Call the API asynchronously with a 4.5s strict timeout to prevent Render app sleep freezing
-            response = await asyncio.wait_for(
-                self.client.chat.completions.create(**completion_params),
-                timeout=4.5
-            )
-            print("Response:", response)
+            print("Sending request to OpenAI...")
+            # Call the API with a strict 5.0s timeout
+            start_time = time.time()
+            try:
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(self.client.chat.completions.create, **completion_params),
+                    timeout=5.0
+                )
+            except asyncio.TimeoutError:
+                logger.error("OAI_REQUEST_TIMEOUT: AI took > 5 seconds")
+                return fallback_msg
+            
+            end_time = time.time()
+            response_time = (end_time - start_time) * 1000
+            print(f"Response received in {response_time:.2f}ms")
+            logger.info(f"OAI_RESPONSE_TIME: {response_time:.2f}ms")
             
             logger.info("OAI_RESPONSE_STATUS: 200 OK")
 
@@ -138,14 +134,14 @@ class GeminiService:
             return fallback_msg
 
         try:
-            safe_prompt = prompt[:250]
-            max_tokens = 100
+            safe_prompt = prompt[:200]
+            max_tokens = 150
 
             logger.info("--- AI VISION DEBUG START (DEEPSEEK) ---")
             
             # Payload for Vision (Standard OpenAI format)
             completion_params = {
-                "model": "z-ai/glm-4.5-air:free", # Fallback to chat if vision isn't separate
+                "model": "gpt-4o-mini", 
                 "messages": [
                     {
                         "role": "user",
@@ -160,7 +156,7 @@ class GeminiService:
                         ]
                     }
                 ],
-                "max_tokens": max_tokens
+                "max_tokens": 150
             }
 
             if response_format:
@@ -168,13 +164,21 @@ class GeminiService:
 
             logger.info(f"OAI_VISION_REQUEST_PAYLOAD: {json.dumps(completion_params)}")
 
-            print("Sending request to DeepSeek...")
-            # Call the API asynchronously with a strict timeout
-            response = await asyncio.wait_for(
-                self.client.chat.completions.create(**completion_params),
-                timeout=4.5
-            )
-            print("Response:", response)
+            print("Sending request to OpenAI...")
+            # Call the API with a strict 5.0s timeout
+            start_time = time.time()
+            try:
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(self.client.chat.completions.create, **completion_params),
+                    timeout=5.0
+                )
+            except asyncio.TimeoutError:
+                logger.error("OAI_VISION_TIMEOUT: AI took > 5 seconds")
+                return fallback_msg
+            
+            end_time = time.time()
+            response_time = (end_time - start_time) * 1000
+            logger.info(f"OAI_VISION_RESPONSE_TIME: {response_time:.2f}ms")
             
             logger.info("OAI_VISION_RESPONSE_STATUS: 200 OK")
 
@@ -188,7 +192,7 @@ class GeminiService:
                 return fallback_msg
 
             logger.info(f"OAI_VISION_RESPONSE_CONTENT: {content}")
-            logger.info("--- AI VISION DEBUG END (SUCCESS) ---")
+            logger.info(f"--- AI VISION DEBUG END (SUCCESS in {response_time:.2f}ms) ---")
             return content
 
         except Exception as e:
@@ -198,3 +202,37 @@ class GeminiService:
             logger.error("OAI_VISION_RESPONSE_STATUS: FAIL")
             logger.error(f"GEMINI_VISION_HIT: {str(e)}")
             return fallback_msg
+    async def chat(self, user_message: str):
+        """
+        New simplified chat endpoint following specific user pattern.
+        """
+        fallback_msg = "Smart offline mode activated: I can still guide you based on agricultural knowledge."
+        if not self.client:
+            return {"response": fallback_msg}
+
+        try:
+            # Using the specific Responses API pattern requested with 5s timeout
+            start_time = time.time()
+            try:
+                # Note: responses.create is a synchronous call in this SDK version
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(self.client.responses.create, model="gpt-4.1-mini", input=user_message, max_tokens=150),
+                    timeout=5.0
+                )
+            except asyncio.TimeoutError:
+                logger.error("NEW_CHAT_TIMEOUT: AI took > 5 seconds")
+                return {"response": fallback_msg}
+            
+            end_time = time.time()
+            response_time = (end_time - start_time) * 1000
+            logger.info(f"NEW_CHAT_RESPONSE_TIME: {response_time:.2f}ms")
+                
+            return {
+                "response": response.output_text
+            }
+        except Exception as e:
+            logger.error(f"NEW_CHAT_ERROR: {str(e)}")
+            # Custom fallback as requested
+            return {
+                "response": fallback_msg
+            }

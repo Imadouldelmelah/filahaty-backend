@@ -20,17 +20,15 @@ class CropRecommendationService:
             base_crop = get_rule_based_crop(context)["crop"]
             
             prompt = f"""
-            ACT AS: Master Agronomist.
-            SUBJECT: Scientific Reasoning for Crop Selection.
-            INPUT_DATA: {context}
-            RECOMMENDED_CROP: {base_crop}
+            Return ONLY JSON:
+            {{
+                "crop": "{base_crop}",
+                "confidence": "high",
+                "reason": "Scientific reasoning for this choice...",
+                "alternatives": ["alternative1", "alternative2"]
+            }}
             
-            TASK: 
-            1. Provide a detailed scientific 'reason' for why '{base_crop}' is the absolute best choice based on the input data.
-            2. Suggest 2-3 compatible 'alternatives'.
-            
-            FORMAT: JSON only.
-            SCHEMA: {{"crop": "{base_crop}", "confidence": "high", "reason": "Scientific explanation...", "alternatives": []}}
+            Context: {context}
             """
             return await self._ai.generate(prompt)
 

@@ -13,7 +13,7 @@ async def test_offline_mode():
     print("Verifying Structured Offline Mode...")
     
     # Force AI failure via invalid key
-    os.environ["OPENROUTER_API_KEY"] = "sk-bad-key"
+    os.environ["OPENAI_API_KEY"] = "sk-bad-key"
     
     print("\n--- Testing Crop Idea Fallback ---")
     recommendation_svc = CropRecommendationService()

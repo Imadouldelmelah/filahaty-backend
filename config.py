@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     ]
     
     # API Keys (Validated)
-    OPENROUTER_API_KEY: str
+    OPENAI_API_KEY: str
     NEWS_API_KEY: Optional[str] = None
     
     model_config = SettingsConfigDict(
@@ -26,3 +26,11 @@ class Settings(BaseSettings):
     )
 
 settings = Settings()
+
+# Secure and explicit validation check
+import os
+_api_key = os.getenv("OPENAI_API_KEY")
+if not _api_key:
+    # Note: Pydantic also validates this via the Settings class, 
+    # but we add this explicit check for redundant security as requested.
+    raise Exception("Missing OpenAI API key")

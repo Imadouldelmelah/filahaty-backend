@@ -14,7 +14,7 @@ async def verify_safe_ai():
     service = GeminiService()
     
     # Check current API KEY setup
-    os.environ["OPENROUTER_API_KEY"] = "sk-safe-test-key"
+    os.environ["OPENAI_API_KEY"] = "sk-safe-test-key"
 
     print("\n--- Testing Token Limit & Simple Prompt ---")
     # We mock requests.post to check the PAYLOAD

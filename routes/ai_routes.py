@@ -25,20 +25,16 @@ async def chat_with_ai_endpoint(request: ChatRequest):
     """
     AI works only when endpoint is called.
     """
+    from services.gemini_service import GeminiService
+    ai_svc = GeminiService()
     try:
-        response_str = await call_ai(request.message, timeout=5.0)
-        
-        return ChatResponse(response=response_str)
-    except asyncio.TimeoutError:
-        logger.error("CHAT_ERROR: AI response timed out.")
+        # Use the new simplified chat method as requested
+        result = await ai_svc.chat(request.message)
+        return ChatResponse(response=result["response"])
+    except Exception as e:
+        logger.error(f"CHAT_ROUTE_ERROR: {str(e)}")
         return ChatResponse(
             response="Smart offline mode activated: I can still guide you based on agricultural knowledge.",
-            status="offline_optimized"
-        )
-    except Exception as e:
-        logger.error(f"CHAT_ERROR: {str(e)}")
-        return ChatResponse(
-            response="I'm momentarily offline, but still here to help with your farm.",
             status="offline_optimized"
         )
 

@@ -12,7 +12,7 @@ async def test_hardening():
     service = GeminiService()
     
     print("\n--- SCENARIO 1: Broken Environment (No Key) ---")
-    os.environ["OPENROUTER_API_KEY"] = ""
+    os.environ["OPENAI_API_KEY"] = ""
     try:
         response = await service.generate("Test")
         print(f"Response: {response}")
@@ -23,7 +23,7 @@ async def test_hardening():
 
     print("\n--- SCENARIO 2: Credits Exhausted (402 Simulation) ---")
     # This involves a real call but we know it fails 402 with current key
-    os.environ["OPENROUTER_API_KEY"] = "sk-or-v1-test-fake-key" # A placeholder key or just bad key
+    os.environ["OPENAI_API_KEY"] = "sk-or-v1-test-fake-key" # A placeholder key or just bad key
     try:
         response = await service.generate("Real-ish call")
         print(f"Response: {response}")

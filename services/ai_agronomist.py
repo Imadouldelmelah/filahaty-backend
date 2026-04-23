@@ -20,15 +20,14 @@ class AIAgronomistService:
         # Define the AI refinement step
         async def ai_refinement():
             prompt = f"""
-            Generate farming journey for crop: {crop_name} at stage: {current_stage}.
-            
-            Ensure the response strictly follows this JSON format:
+            Return ONLY JSON:
             {{
-                "advice": "Short expert advice.",
-                "alerts": []
+                "advice": "Expert agricultural advice for {crop_name} at {current_stage}.",
+                "alerts": ["Alert 1", "Alert 2"]
             }}
+            
+            Context: Crop is {crop_name}. Current stage is {current_stage}.
             """
-            # Rely on system instructions and manual JSON extraction for weak models
             return await self._ai.generate(prompt)
 
         # Execute via Controller
