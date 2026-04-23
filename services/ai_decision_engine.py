@@ -26,11 +26,16 @@ class AIDecisionEngine:
 
         # 2. Step 2 & 3: AI Refinement
         async def ai_decision_task():
+            # Compress context strictly to core details
+            short_context = {
+                "crop": crop_name,
+                "stage": context.get("current_stage", "Unknown")
+            }
             prompt = f"""
             ACT AS: Master Agronomist.
-            CONTEXT: {crop_name} | DATA: {json.dumps(context)}
+            CONTEXT: {short_context}
             
-            TASK: Synthesize a unified farming decision based on sensors/weather.
+            TASK: Synthesize a unified farming decision.
             SCHEMA: {{"decision": "...", "priority": "high/medium/low", "reason": "...", "action": "..."}}
             """
             return await self._ai.generate(prompt)

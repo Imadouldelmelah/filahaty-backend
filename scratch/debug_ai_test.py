@@ -23,7 +23,7 @@ async def test_hardening():
 
     print("\n--- SCENARIO 2: Credits Exhausted (402 Simulation) ---")
     # This involves a real call but we know it fails 402 with current key
-    os.environ["OPENROUTER_API_KEY"] = "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" # A known 402 key or just bad key
+    os.environ["OPENROUTER_API_KEY"] = "sk-or-v1-test-fake-key" # A placeholder key or just bad key
     try:
         response = await service.generate("Real-ish call")
         print(f"Response: {response}")

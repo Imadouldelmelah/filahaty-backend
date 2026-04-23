@@ -19,21 +19,17 @@ class AIAgronomistService:
         
         # Define the AI refinement step
         async def ai_refinement():
-            base_advice = get_rule_based_advice(crop_name, current_stage)
             prompt = f"""
             Generate farming journey for crop: {crop_name} at stage: {current_stage}.
-            You must return ONLY valid JSON.
             
             Ensure the response strictly follows this JSON format:
             {{
-                "stage": "{current_stage}",
-                "tasks": {json.dumps(base_advice['tasks'])},
-                "advice": "Explain why these tasks are important and provide expert advice.",
+                "advice": "Short expert advice.",
                 "alerts": []
             }}
             """
-            # Pass response_format for DeepSeek compliance
-            return await self._ai.generate(prompt, response_format={"type": "json_object"})
+            # Rely on system instructions and manual JSON extraction for weak models
+            return await self._ai.generate(prompt)
 
         # Execute via Controller
         return await HybridDecisionController.execute(
@@ -71,7 +67,7 @@ class AIAgronomistService:
         
         try:
             logger.info(f"Generating advanced chat response for {crop_name}")
-            raw_response = await self._ai.generate(full_prompt)
+            raw_response = await self._ai.generate(full_prompt, require_json=False)
             
             # Intercept service error strings
             if "AI error" in raw_response:

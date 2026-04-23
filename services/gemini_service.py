@@ -12,23 +12,23 @@ class GeminiService:
 
     def __init__(self):
         # API key loading from environment variable
-        DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-        if not DEEPSEEK_API_KEY:
-            print("ERROR: DEEPSEEK_API_KEY missing")
-            logger.error("DEEPSEEK_API_KEY missing from environment")
+        API_KEY = os.getenv("OPENROUTER_API_KEY")
+        if not API_KEY:
+            raise Exception("Missing API key")
+        
+        print("API KEY:", API_KEY[:5])
+        try:
+            self.client = OpenAI(
+                api_key=API_KEY,
+                base_url="https://openrouter.ai/api/v1",
+                default_headers={
+                    "Authorization": f"Bearer {API_KEY}"
+                }
+            )
+            logger.info("OpenRouter client initialized")
+        except Exception as e:
+            logger.error(f"Failed to initialize OpenRouter client: {str(e)}")
             self.client = None
-        else:
-            print("API KEY:", DEEPSEEK_API_KEY[:5])
-            try:
-                self.client = OpenAI(
-                    api_key=DEEPSEEK_API_KEY,
-                    base_url="https://api.deepseek.com/v1"
-                )
-                logger.info("DeepSeek (OpenAI-compatible) client initialized")
-            except Exception as e:
-                logger.error(f"Failed to initialize DeepSeek client: {str(e)}")
-                self.client = None
-
     def _get_dynamic_tokens(self, message: str) -> int:
         """
         Calculate safe max_tokens based on message length.
@@ -40,16 +40,18 @@ class GeminiService:
              return 150
         return 200
 
-    async def generate(self, message: str, retry_count: int = 0, response_format: dict = None):
+    async def generate(self, message: str, retry_count: int = 0, response_format: dict = None, require_json: bool = True):
         """
-        Hardened AI execution. Forces valid JSON and parses safely.
+        Hardened AI execution. By default forces valid JSON and parses safely.
         """
         # Fallback JSON structure matching the app's needs
-        fallback_json = {
-            "response": "Smart offline mode activated",
-            "data": "basic agricultural guidance"
-        }
-        fallback_msg = json.dumps(fallback_json)
+        if require_json:
+            fallback_msg = json.dumps({
+                "response": "Smart offline mode activated",
+                "data": "basic agricultural guidance"
+            })
+        else:
+            fallback_msg = "Smart offline mode activated: I can still guide you based on agricultural knowledge."
         
         if not self.client:
             logger.error("GEMINI_SVC_CRITICAL: DeepSeek client not initialized.")
@@ -57,20 +59,29 @@ class GeminiService:
 
         try:
             # 1. Payload Construction
-            safe_message = message[:500]
-            max_tokens = 250 
+            safe_message = message[:250] # Trimmed message length slightly to save input tokens
+            max_tokens = 100 
+
+            if require_json:
+                system_instruction = (
+                    "Respond ONLY in JSON format. No text before or after.\n"
+                    "Example:\n"
+                    "{\n"
+                    "\"crop\": \"tomato\",\n"
+                    "\"confidence\": \"high\",\n"
+                    "\"reason\": \"...\"\n"
+                    "}"
+                )
+            else:
+                system_instruction = "You are a helpful expert agricultural assistant. Answer concisely and clearly."
 
             # 2. Execute Request via OpenAI SDK
             completion_params = {
-                "model": "deepseek-chat",
+                "model": "z-ai/glm-4.5-air:free",
                 "messages": [
                     {
                         "role": "system", 
-                        "content": (
-                            "You are an expert agricultural assistant. "
-                            "You must return ONLY valid JSON. No text outside JSON. "
-                            "Example output: {\"stage\": \"Growth\", \"tasks\": [\"Water plants\"], \"advice\": \"Maintain irrigation\", \"alerts\": []}"
-                        )
+                        "content": system_instruction
                     },
                     {"role": "user", "content": safe_message}
                 ],
@@ -92,9 +103,13 @@ class GeminiService:
 
             if not response.choices or len(response.choices) == 0:
                 logger.error("OAI_RESPONSE_CONTENT: No choices returned")
-                raise Exception("Empty response from AI")
+                return fallback_msg
 
             raw_content = response.choices[0].message.content
+            if not raw_content or str(raw_content).strip() == "":
+                logger.error("OAI_RESPONSE_CONTENT: Empty content returned")
+                return fallback_msg
+
             logger.info(f"OAI_RESPONSE_CONTENT: {raw_content}")
             
             return raw_content
@@ -105,7 +120,7 @@ class GeminiService:
                 print("Status Code:", e.status_code)
             logger.error(f"OAI_RESPONSE_STATUS: FAIL")
             logger.error(f"GEMINI_SVC_HIT_ERROR: {str(e)}")
-            raise e
+            return fallback_msg
 
 
     async def generate_vision(self, prompt: str, base64_image: str, mime_type: str = "image/jpeg", retry_count: int = 0, response_format: dict = None):
@@ -120,14 +135,14 @@ class GeminiService:
             return fallback_msg
 
         try:
-            safe_prompt = prompt[:500]
-            max_tokens = 150
+            safe_prompt = prompt[:250]
+            max_tokens = 100
 
             logger.info("--- AI VISION DEBUG START (DEEPSEEK) ---")
             
             # Payload for Vision (Standard OpenAI format)
             completion_params = {
-                "model": "deepseek-chat", # Fallback to chat if vision isn't separate
+                "model": "z-ai/glm-4.5-air:free", # Fallback to chat if vision isn't separate
                 "messages": [
                     {
                         "role": "user",
@@ -156,11 +171,15 @@ class GeminiService:
             
             logger.info("OAI_VISION_RESPONSE_STATUS: 200 OK")
 
-            if not response.choices:
+            if not response.choices or len(response.choices) == 0:
                 logger.error("OAI_VISION_RESPONSE_CONTENT: No choices returned")
-                raise Exception("Empty vision response from AI")
+                return fallback_msg
 
             content = response.choices[0].message.content
+            if not content or str(content).strip() == "":
+                logger.error("OAI_VISION_RESPONSE_CONTENT: Empty content returned")
+                return fallback_msg
+
             logger.info(f"OAI_VISION_RESPONSE_CONTENT: {content}")
             logger.info("--- AI VISION DEBUG END (SUCCESS) ---")
             return content
@@ -171,4 +190,4 @@ class GeminiService:
                 print("Status Code:", e.status_code)
             logger.error("OAI_VISION_RESPONSE_STATUS: FAIL")
             logger.error(f"GEMINI_VISION_HIT: {str(e)}")
-            raise e
+            return fallback_msg

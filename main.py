@@ -83,13 +83,13 @@ except Exception as e:
 async def startup_event():
     import os
     # Verify critical settings on startup with explicit debug output
-    api_key = os.getenv("DEEPSEEK_API_KEY")
+    api_key = os.getenv("OPENROUTER_API_KEY")
     if api_key:
-        print(f"[STARTUP] DEEPSEEK_API_KEY loaded: YES (length={len(api_key)})")
-        logger.info("STARTUP: DEEPSEEK_API_KEY is present and loaded.")
+        print(f"[STARTUP] API_KEY loaded: YES (length={len(api_key)})")
+        logger.info("STARTUP: API_KEY is present and loaded.")
     else:
-        print("[STARTUP] DEEPSEEK_API_KEY loaded: NO — AI features will fail!")
-        logger.error("STARTUP_ERROR: DEEPSEEK_API_KEY is missing. Check .env or environment variables.")
+        print("[STARTUP] API_KEY loaded: NO — AI features will fail!")
+        logger.error("STARTUP_ERROR: API_KEY is missing. Check .env or environment variables.")
 
     if not settings.NEWS_API_KEY:
         logger.warning("SECURITY_ALERT: NEWS_API_KEY is missing. News features will be disabled.")
@@ -104,19 +104,25 @@ def root():
         "security_level": "High"
     }
 
-@app.get("/test-deepseek")
-def test_deepseek():
+@app.get("/test-openrouter")
+def test_openrouter():
     import os
     from openai import OpenAI
     try:
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        if not api_key:
+            raise Exception("Missing API key")
         client = OpenAI(
-            api_key=os.getenv("DEEPSEEK_API_KEY"),
-            base_url="https://api.deepseek.com/v1"
+            api_key=api_key,
+            base_url="https://openrouter.ai/api/v1",
+            default_headers={
+                "Authorization": f"Bearer {api_key}"
+            }
         )
         
-        print("Sending request to DeepSeek...")
+        print("Sending request to OpenRouter...")
         response = client.chat.completions.create(
-            model="deepseek-chat",
+            model="z-ai/glm-4.5-air:free",
             messages=[{"role": "user", "content": "Say hello"}],
             max_tokens=20
         )
@@ -124,7 +130,7 @@ def test_deepseek():
         return {"response": response.choices[0].message.content}
         
     except Exception as e:
-        print(f"DeepSeek Test Error: {str(e)}")
+        print(f"OpenRouter Test Error: {str(e)}")
         return {"error": str(e)}
 
 

@@ -15,7 +15,7 @@ async def call_ai(prompt):
     """
     from services.gemini_service import GeminiService
     ai_svc = GeminiService()
-    return await ai_svc.generate(prompt)
+    return await ai_svc.generate(prompt, require_json=False)
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat_with_ai_endpoint(request: ChatRequest):
@@ -25,23 +25,6 @@ async def chat_with_ai_endpoint(request: ChatRequest):
     try:
         response_str = await call_ai(request.message)
         
-        # Check if it's our new fallback JSON
-        import json
-        try:
-            parsed = json.loads(response_str)
-            if "response" in parsed and parsed["response"] == "Smart offline mode activated":
-                return ChatResponse(
-                    response="Smart offline mode activated: I can still guide you based on agricultural knowledge.",
-                    status="offline_optimized"
-                )
-            
-            # If the AI returned a JSON object instead of raw text, format it safely
-            if isinstance(parsed, dict) and "response" not in parsed:
-                 response_str = json.dumps(parsed, indent=2)
-                 
-        except:
-            pass # Plain text generated instead of JSON
-            
         return ChatResponse(response=response_str)
     except Exception as e:
         logger.error(f"CHAT_ERROR: {str(e)}")

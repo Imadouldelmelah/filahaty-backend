@@ -45,7 +45,18 @@ class HybridDecisionController:
                 if "Smart offline mode activated" in response:
                     raise Exception("AI returned offline mode internally")
                     
-                refined_data = json.loads(response)
+                # Extract JSON manually for non-strict models
+                start_idx = response.find("{")
+                end_idx = response.rfind("}")
+                
+                if start_idx != -1 and end_idx != -1 and start_idx <= end_idx:
+                    json_str = response[start_idx:end_idx + 1]
+                    try:
+                        refined_data = json.loads(json_str)
+                    except json.JSONDecodeError as decode_err:
+                        raise Exception(f"Safely caught JSON parsing failure: {str(decode_err)}")
+                else:
+                    raise Exception("No JSON structure found in AI response")
                 
                 # Merge AI refinement
                 if protected_keys:
