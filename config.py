@@ -15,13 +15,14 @@ class Settings(BaseSettings):
     ]
     
     # API Keys (Validated)
-    DEEPSEEK_API_KEY: Optional[str] = None
+    OPENROUTER_API_KEY: str
     NEWS_API_KEY: Optional[str] = None
     
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
-        case_sensitive=True
+        case_sensitive=True,
+        extra="ignore"
     )
 
 settings = Settings()
