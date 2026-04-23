@@ -104,6 +104,10 @@ def root():
         "security_level": "High"
     }
 
+@app.get("/ping")
+def ping():
+    return {"status": "ok"}
+
 @app.get("/test-openrouter")
 def test_openrouter():
     import os

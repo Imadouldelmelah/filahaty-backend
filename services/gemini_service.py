@@ -1,7 +1,7 @@
 import os
 import json
 import asyncio
-from openai import OpenAI
+from openai import AsyncOpenAI
 from dotenv import load_dotenv
 from utils.logger import logger
 
@@ -18,7 +18,7 @@ class GeminiService:
         
         print("API KEY:", API_KEY[:5])
         try:
-            self.client = OpenAI(
+            self.client = AsyncOpenAI(
                 api_key=API_KEY,
                 base_url="https://openrouter.ai/api/v1",
                 default_headers={
@@ -95,8 +95,11 @@ class GeminiService:
             logger.info(f"OAI_REQUEST_PAYLOAD: {json.dumps(completion_params)}")
 
             print("Sending request to DeepSeek...")
-            # Call the API
-            response = self.client.chat.completions.create(**completion_params)
+            # Call the API asynchronously with a 4.5s strict timeout to prevent Render app sleep freezing
+            response = await asyncio.wait_for(
+                self.client.chat.completions.create(**completion_params),
+                timeout=4.5
+            )
             print("Response:", response)
             
             logger.info("OAI_RESPONSE_STATUS: 200 OK")
@@ -166,7 +169,11 @@ class GeminiService:
             logger.info(f"OAI_VISION_REQUEST_PAYLOAD: {json.dumps(completion_params)}")
 
             print("Sending request to DeepSeek...")
-            response = self.client.chat.completions.create(**completion_params)
+            # Call the API asynchronously with a strict timeout
+            response = await asyncio.wait_for(
+                self.client.chat.completions.create(**completion_params),
+                timeout=4.5
+            )
             print("Response:", response)
             
             logger.info("OAI_VISION_RESPONSE_STATUS: 200 OK")

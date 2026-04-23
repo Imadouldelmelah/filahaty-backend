@@ -8,14 +8,17 @@ from utils.logger import logger
 
 router = APIRouter(prefix="/ai", tags=["AI Assistant"])
 
-async def call_ai(prompt):
+import asyncio
+
+async def call_ai(prompt, timeout=5.0):
     """
     Standard simple AI chat call using GeminiService.
     Ensures consistent token limits and 402 retry logic.
     """
     from services.gemini_service import GeminiService
     ai_svc = GeminiService()
-    return await ai_svc.generate(prompt, require_json=False)
+    # Enforce strict maximum wait wrapper at the execution level
+    return await asyncio.wait_for(ai_svc.generate(prompt, require_json=False), timeout=timeout)
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat_with_ai_endpoint(request: ChatRequest):
@@ -23,9 +26,15 @@ async def chat_with_ai_endpoint(request: ChatRequest):
     AI works only when endpoint is called.
     """
     try:
-        response_str = await call_ai(request.message)
+        response_str = await call_ai(request.message, timeout=5.0)
         
         return ChatResponse(response=response_str)
+    except asyncio.TimeoutError:
+        logger.error("CHAT_ERROR: AI response timed out.")
+        return ChatResponse(
+            response="Smart offline mode activated: I can still guide you based on agricultural knowledge.",
+            status="offline_optimized"
+        )
     except Exception as e:
         logger.error(f"CHAT_ERROR: {str(e)}")
         return ChatResponse(
