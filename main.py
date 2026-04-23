@@ -104,6 +104,10 @@ def root():
         "security_level": "High"
     }
 
+@app.get("/test")
+def test_endpoint():
+    return {"message": "ok"}
+
 @app.get("/ping")
 def ping():
     return {"status": "ok"}
