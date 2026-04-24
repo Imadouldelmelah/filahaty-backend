@@ -19,7 +19,7 @@ class FakeMonitoringService:
                 "soil_moisture": random.randint(20, 80), # Allows for < 35 triggers
                 "temperature": random.randint(15, 40),   # Allows for > 32 triggers
                 "humidity": random.randint(30, 90),
-                "ph": round(random.uniform(5.5, 7.5), 1),
+                "soil_ph": round(random.uniform(5.5, 7.5), 1),
                 "nitrogen": random.randint(0, 140),
                 "phosphorus": random.randint(0, 120),
                 "potassium": random.randint(0, 120),
@@ -50,7 +50,7 @@ class FakeMonitoringService:
                 "soil_moisture": 65,
                 "temperature": 25,
                 "humidity": 70,
-                "ph": 6.5,
+                "soil_ph": 6.5,
                 "nitrogen": 40,
                 "phosphorus": 35,
                 "potassium": 35,

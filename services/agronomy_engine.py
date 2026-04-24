@@ -304,3 +304,46 @@ def get_static_journey_data(day: int) -> dict:
                 "Keep harvested crops out of direct sun"
             ]
         }
+
+def get_smart_journey_logic(base_data: dict, monitoring: dict) -> dict:
+    """
+    Applies expert rules to base journey data using real-time monitoring inputs.
+    Injects dynamic tasks and alerts based on environmental conditions.
+    """
+    if not monitoring:
+        return base_data
+        
+    tasks = list(base_data.get("tasks", []))
+    alerts = list(base_data.get("alerts", []))
+    recommendations = list(base_data.get("tips", [])) # Use tips as base recommendations
+    
+    # 1. Irrigation Logic: soil_moisture < 35 -> irrigation task
+    moisture = monitoring.get("soil_moisture", 50)
+    if moisture < 35:
+        tasks.insert(0, "URGENT: Run irrigation system (Moisture at {}%)".format(moisture))
+        alerts.insert(0, "Critical soil moisture: Crop stress risk is high.")
+        
+    # 2. Heat Stress: temperature > 32 -> heat alert
+    temp = monitoring.get("temperature", 25)
+    if temp > 32:
+        alerts.insert(0, "HEAT ALERT: High temperature ({}°C) may cause wilting.".format(temp))
+        recommendations.append("Apply organic mulch to protect roots from extreme heat.")
+        
+    # 3. Fertilization: nitrogen < 20 -> fertilization task
+    nitrogen = monitoring.get("nitrogen", 30)
+    if nitrogen < 20:
+        tasks.append("Apply Nitrogen fertilization (Low levels detected: {} mg/kg)".format(nitrogen))
+        recommendations.append("Test soil again in 7 days to verify Nitrogen uptake.")
+        
+    # 4. Soil Acidity: soil_ph < 6 -> soil correction alert
+    ph = monitoring.get("soil_ph", 7.0)
+    if ph < 6.0:
+        alerts.append("Soil acidity correction needed (pH is dangerously low: {})".format(ph))
+        tasks.append("Apply lime/calcium carbonate to raise soil pH values.")
+
+    return {
+        "stage": base_data.get("stage", "Unknown"),
+        "tasks": tasks,
+        "alerts": alerts,
+        "recommendations": recommendations
+    }

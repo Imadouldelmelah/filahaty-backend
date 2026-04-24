@@ -78,15 +78,9 @@ async def get_journey_guidance_endpoint(journey_id: str):
         "history": progress.get("history", [])
     }
     
-    # 3. Dynamic Smart Alerts (Rule-based layer - applied to baseline)
-    dynamic_alerts = []
-    if monitoring_data.get("soil_moisture", 100) < 35:
-        dynamic_alerts.append("Irrigation needed")
-    if monitoring_data.get("temperature", 0) > 32:
-        dynamic_alerts.append("Heat stress risk")
-        
-    # Merge rules into progress for AI to refine
-    progress["alerts"] = progress["alerts"] + dynamic_alerts
+    # 3. Apply consolidated Smart Logic (Rule-based layer)
+    from services.agronomy_engine import get_smart_journey_logic
+    smart_guidance = get_smart_journey_logic(progress, monitoring_data)
     
     try:
         # Get hybrid advice (AI call will happen inside)
@@ -97,13 +91,15 @@ async def get_journey_guidance_endpoint(journey_id: str):
             "journey_id": journey_id,
             "day": progress["day"],
             "stage": progress["stage"],
-            "tasks": progress["tasks"], # Protected by controller
-            "alerts": list(set(progress["alerts"] + advice_data.get("alerts", []))), # Deduplicate
-            "tips": advice_data.get("tips", progress["tips"]),
+            "tasks": list(set(smart_guidance["tasks"] + advice_data.get("tasks", []))),
+            "alerts": list(set(smart_guidance["alerts"] + advice_data.get("alerts", []))),
+            "recommendations": list(set(smart_guidance["recommendations"] + advice_data.get("tips", []))),
             "monitoring": {
                 "soil_moisture": monitoring_data.get("soil_moisture"),
                 "temperature": monitoring_data.get("temperature"),
-                "humidity": monitoring_data.get("humidity")
+                "humidity": monitoring_data.get("humidity"),
+                "nitrogen": monitoring_data.get("nitrogen"),
+                "soil_ph": monitoring_data.get("soil_ph")
             }
         }
     except Exception as e:
@@ -112,14 +108,48 @@ async def get_journey_guidance_endpoint(journey_id: str):
         return {
             "status": "rule_based_fallback",
             "journey_id": journey_id,
-            "day": progress["day"],
-            "stage": progress["stage"],
-            "tasks": progress["tasks"],
-            "alerts": progress["alerts"],
-            "tips": progress["tips"],
+            "day": progress.get("day"),
+            "stage": progress.get("stage"),
+            "tasks": smart_guidance["tasks"],
+            "alerts": smart_guidance["alerts"],
+            "recommendations": smart_guidance["recommendations"],
             "monitoring": {
                 "soil_moisture": monitoring_data.get("soil_moisture"),
                 "temperature": monitoring_data.get("temperature"),
-                "humidity": monitoring_data.get("humidity")
+                "humidity": monitoring_data.get("humidity"),
+                "nitrogen": monitoring_data.get("nitrogen"),
+                "soil_ph": monitoring_data.get("soil_ph")
             }
         }
+
+@router.get("/calendar/{journey_id}")
+async def get_journey_calendar_endpoint(journey_id: str):
+    """
+    Generates a dynamic 30-day agricultural calendar based on current conditions.
+    """
+    from services.tracking_service import TrackingService
+    from services.calendar_service import CalendarService
+    from services.fake_monitoring_service import FakeMonitoringService
+    
+    tracking_svc = TrackingService()
+    calendar_svc = CalendarService()
+    monitoring_svc = FakeMonitoringService()
+    
+    progress = tracking_svc.get_progress(journey_id)
+    if "error" in progress:
+        raise HTTPException(status_code=404, detail=progress["error"])
+        
+    monitoring_data = monitoring_svc.get_fake_monitoring_data(journey_id)
+    
+    calendar = calendar_svc.generate_30_day_projection(
+        crop_name=progress["crop"],
+        current_day=progress["day"],
+        monitoring_data=monitoring_data
+    )
+    
+    return {
+        "journey_id": journey_id,
+        "crop": progress["crop"],
+        "current_day": progress["day"],
+        "calendar": calendar
+    }
