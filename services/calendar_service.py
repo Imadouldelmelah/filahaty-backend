@@ -12,72 +12,105 @@ class CalendarService:
         2. Monitoring-based (Real-time triggers)
         3. Default fallback (Always Available)
         """
+        from datetime import datetime, timedelta
+        
         projection = []
+        today = datetime.now()
         
-        # 1. Real-time condition assessment (Layer 2 & 3 Pre-calc)
-        moisture = monitoring_data.get("soil_moisture", 50)
-        nitrogen = monitoring_data.get("nitrogen", 30)
-        temp = monitoring_data.get("temperature", 25)
-        humidity = monitoring_data.get("humidity", 65)
-        
-        for i in range(30):
-            target_day = current_day + i
+        try:
+            # 1. Real-time condition assessment (Layer 2 & 3 Pre-calc)
+            moisture = monitoring_data.get("soil_moisture", 50)
+            nitrogen = monitoring_data.get("nitrogen", 30)
+            temp = monitoring_data.get("temperature", 25)
+            humidity = monitoring_data.get("humidity", 65)
             
-            # --- LAYER 1: Stage-based tasks ---
-            stage = self._get_stage_name(target_day)
-            priority = "low"
-            
-            if "planting" in stage.lower():
-                daily_task = "Soil preparation and Initial Irrigation"
-                priority = "high"
-            elif "growth" in stage.lower():
-                daily_task = "Irrigation and Routine Fertilization"
+            for i in range(30):
+                target_day = current_day + i
+                target_date = (today + timedelta(days=i)).strftime("%Y-%m-%d")
+                
+                daily_task = None
                 priority = "medium"
-            elif "flower" in stage.lower():
-                daily_task = "Advanced Monitoring and Pest Control"
-                priority = "high"
-            elif "harvest" in stage.lower():
-                daily_task = "Harvesting and Post-harvest Storage"
-                priority = "high"
-            else:
-                daily_task = "Standard Field Monitoring"
-                priority = "low"
-
-            # --- LAYER 2: Monitoring-based overrides (Immediate 3-day focus) ---
-            if i < 3:
-                if moisture < 35:
-                    daily_task = "URGENT: Irrigation system activation (Dry soil)"
+                
+                # --- LAYER 1: Stage-based tasks ---
+                stage = self._get_stage_name(target_day)
+                
+                if "planting" in stage.lower():
+                    daily_task = "Soil preparation and Initial Irrigation"
                     priority = "high"
-                elif nitrogen < 20:
-                    daily_task = "CRITICAL: Targeted Nitrogen fertilization"
+                elif "growth" in stage.lower():
+                    daily_task = "Irrigation and Routine Fertilization"
+                    priority = "medium"
+                elif "flower" in stage.lower():
+                    daily_task = "Advanced Monitoring and Pest Control"
                     priority = "high"
-                elif temp > 32:
-                    daily_task = "ALERT: Apply heat stress protection"
-                    priority = "medium"
-                elif humidity > 75:
-                    daily_task = "WARNING: Fungal risk check (High humidity)"
-                    priority = "medium"
+                elif "harvest" in stage.lower():
+                    daily_task = "Harvesting and Post-harvest Storage"
+                    priority = "high"
 
-            # --- LAYER 3: Default fallback (If something went wrong or gap exists) ---
-            if not daily_task or daily_task.strip() == "":
-                daily_task = "General Irrigation and Field Inspection"
-                priority = "medium"
+                # --- LAYER 2: Monitoring-based overrides (Immediate 3-day focus) ---
+                if i < 3:
+                    if moisture < 35:
+                        daily_task = "URGENT: Irrigation system activation (Dry soil)"
+                        priority = "high"
+                    elif nitrogen < 20:
+                        daily_task = "CRITICAL: Targeted Nitrogen fertilization"
+                        priority = "high"
+                    elif temp > 32:
+                        daily_task = "ALERT: Apply heat stress protection"
+                        priority = "medium"
+                    elif humidity > 75:
+                        daily_task = "WARNING: Fungal risk check (High humidity)"
+                        priority = "medium"
 
-            projection.append({
-                "day": target_day,
-                "task": daily_task,
-                "priority": priority,
-                "stage": stage
-            })
+                # --- LAYER 3: Default fallback (If something went wrong or gap exists) ---
+                if not daily_task or daily_task.strip() == "":
+                    # Logic fails fallback: irrigation every 2 days, monitoring every day
+                    if i % 2 == 0:
+                        daily_task = "Irrigation and Soil monitoring"
+                        priority = "high"
+                    else:
+                        daily_task = "Soil monitoring"
+                        priority = "medium"
 
-        # Final Stability Check: Ensure at least 14 days
-        if len(projection) < 14:
-            for i in range(len(projection), 14):
                 projection.append({
-                    "day": current_day + i,
-                    "task": "Standard Field Maintenance",
-                    "priority": "low",
-                    "stage": "Unknown"
+                    "date": target_date,
+                    "task": daily_task,
+                    "priority": priority
+                })
+
+        except Exception as e:
+            # If logic fails entirely, return a guaranteed 30-day baseline
+            projection = []
+            for i in range(30):
+                target_date = (today + timedelta(days=i)).strftime("%Y-%m-%d")
+                if i % 2 == 0:
+                    task = "Irrigation and Soil monitoring"
+                    priority = "high"
+                else:
+                    task = "Soil monitoring"
+                    priority = "medium"
+                
+                projection.append({
+                    "date": target_date,
+                    "task": task,
+                    "priority": priority
+                })
+
+        # Final Safety Check: Ensure never empty and exactly 30 days
+        if not projection or len(projection) < 30:
+            current_len = len(projection)
+            for i in range(current_len, 30):
+                target_date = (today + timedelta(days=i)).strftime("%Y-%m-%d")
+                if i % 2 == 0:
+                    task = "Irrigation and Soil monitoring"
+                    priority = "high"
+                else:
+                    task = "Soil monitoring"
+                    priority = "medium"
+                projection.append({
+                    "date": target_date,
+                    "task": task,
+                    "priority": priority
                 })
 
         return projection
