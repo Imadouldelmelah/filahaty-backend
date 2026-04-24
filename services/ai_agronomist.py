@@ -19,7 +19,7 @@ class AIAgronomistService:
         
         # Define the AI refinement step
         async def ai_refinement():
-            from services.deepseek_service import deepseek_svc
+            from services.deepseek_service import get_deepseek_svc
             import asyncio
             
             prompt = f"""
@@ -33,7 +33,8 @@ class AIAgronomistService:
             Context: {json.dumps(context)}
             """
             # AI ONLY generates advice and alerts
-            ai_data = await asyncio.to_thread(deepseek_svc.generate_reasoning, prompt)
+            svc = get_deepseek_svc()
+            ai_data = await asyncio.to_thread(svc.generate_reasoning, prompt)
             return ai_data.get("response", "{}")
 
         # Execute via Controller (AI-First)

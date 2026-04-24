@@ -9,12 +9,12 @@ class DeepSeekR1Service:
         self.api_key = os.getenv("OPENROUTER_API_KEY")
         self.base_url = "https://openrouter.ai/api/v1/chat/completions"
         
-        # 2. Print debug
-        print("API KEY LOADED:", bool(self.api_key))
-        
-        # 3. Add strict validation
+        # 2. Add safe validation
         if not self.api_key:
-            raise Exception("OpenRouter API key missing")
+            print("WARNING: No OpenRouter API key")
+            logger.warning("DeepSeekR1Service: OPENROUTER_API_KEY is missing. AI reasoning will be disabled.")
+        else:
+            print("API KEY LOADED: True")
 
     def generate_reasoning(self, user_message: str) -> str:
         """
@@ -93,5 +93,10 @@ class DeepSeekR1Service:
         # Fallback return matching the same structure
         return {"response": "DeepSeek R1 reasoning is temporarily unavailable. Attempting standard agricultural response."}
 
-# Export for clean usage
-deepseek_svc = DeepSeekR1Service()
+_deepseek_svc = None
+
+def get_deepseek_svc():
+    global _deepseek_svc
+    if _deepseek_svc is None:
+        _deepseek_svc = DeepSeekR1Service()
+    return _deepseek_svc

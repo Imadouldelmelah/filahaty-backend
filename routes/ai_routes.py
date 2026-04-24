@@ -25,11 +25,12 @@ async def chat_with_ai_endpoint(request: ChatRequest):
     """
     Primary AI Chat using DeepSeek R1 reasoning.
     """
-    from services.deepseek_service import deepseek_svc
+    from services.deepseek_service import get_deepseek_svc
     try:
         # 1. Call OpenRouter (DeepSeek R1)
         # Using to_thread because requests is synchronous and we want to keep FastAPI non-blocking
-        ai_data = await asyncio.to_thread(deepseek_svc.generate_reasoning, request.message)
+        svc = get_deepseek_svc()
+        ai_data = await asyncio.to_thread(svc.generate_reasoning, request.message)
         
         # 2. Return success immediately using the extracted response text
         return ChatResponse(response=ai_data.get("response", "No response content"))

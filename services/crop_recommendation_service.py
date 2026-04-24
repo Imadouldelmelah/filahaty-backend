@@ -16,7 +16,7 @@ class CropRecommendationService:
         
         # Define the AI refinement step
         async def ai_refinement():
-            from services.deepseek_service import deepseek_svc
+            from services.deepseek_service import get_deepseek_svc
             import asyncio
             
             prompt = f"""
@@ -32,7 +32,8 @@ class CropRecommendationService:
             Context Data: {json.dumps(context)}
             """
             # Use DeepSeek R1 for specialized agronomic reasoning
-            ai_data = await asyncio.to_thread(deepseek_svc.generate_reasoning, prompt)
+            svc = get_deepseek_svc()
+            ai_data = await asyncio.to_thread(svc.generate_reasoning, prompt)
             return ai_data.get("response", "{}")
 
         # Execute via Controller (AI-First)
