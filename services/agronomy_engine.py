@@ -238,17 +238,10 @@ def get_static_journey_data(day: int) -> dict:
             "tasks": [
                 "Prepare soil with organic compost",
                 "Sow seeds at correct depth",
-                "Light misting for moisture",
-                "Verify soil temperature (20-25°C)"
+                "Light misting for moisture"
             ],
-            "alerts": [
-                "Watch for temperature drops",
-                "Protect from heavy rain"
-            ],
-            "tips": [
-                "Use certified high-quality seeds for better yield",
-                "Plant in early morning or late afternoon"
-            ]
+            "alerts": ["Protect from sudden temperature drops"],
+            "recommendations": ["Use certified high-quality seeds for better yield"]
         }
     elif 11 <= day <= 30:
         return {
@@ -256,17 +249,10 @@ def get_static_journey_data(day: int) -> dict:
             "tasks": [
                 "Apply leaf-friendly Nitrogen fertilizer",
                 "Remove competing weeds",
-                "Transition to deep root irrigation",
-                "Support plants with stakes if needed"
+                "Establish drip irrigation lines"
             ],
-            "alerts": [
-                "Monitor for early pest signs",
-                "Check for yellowing leaves"
-            ],
-            "tips": [
-                "Ensure at least 6-8 hours of direct sunlight",
-                "Avoid over-watering to prevent root rot"
-            ]
+            "alerts": ["Monitor for early pest signs"],
+            "recommendations": ["Ensure at least 6-8 hours of direct sunlight"]
         }
     elif 31 <= day <= 60:
         return {
@@ -274,76 +260,65 @@ def get_static_journey_data(day: int) -> dict:
             "tasks": [
                 "Switch to Potassium-rich fertilizer",
                 "Ensure steady water supply (avoid stress)",
-                "Monitor pollination activity",
-                "Remove early diseased foliage"
+                "Monitor pollination activity"
             ],
-            "alerts": [
-                "Critical stage: Water stress causes blossom drop",
-                "Check for insects on blossoms"
-            ],
-            "tips": [
-                "Avoid high-nitrogen fertilizer as it delays flowering",
-                "Be gentle with plants during work"
-            ]
+            "alerts": ["Water stress causes blossom drop"],
+            "recommendations": ["Avoid high-nitrogen fertilizer as it delays flowering"]
         }
     else: # day 61+
         return {
             "stage": "Harvest",
             "tasks": [
-                "Test ripeness/maturity level",
+                "Test maturity level and fruit firmness",
                 "Harvest using clean, sharp tools",
-                "Sort produce by size and quality",
-                "Prepare storage in cool, dry area"
+                "Sort produce by size and quality"
             ],
-            "alerts": [
-                "Over-ripening will reduce shelf life",
-                "Handle fruit gently to avoid bruising"
-            ],
-            "tips": [
-                "Harvest in the morning for best freshness",
-                "Keep harvested crops out of direct sun"
-            ]
+            "alerts": ["Over-ripening will reduce shelf life"],
+            "recommendations": ["Harvest in the early morning for best freshness"]
         }
 
-def get_smart_journey_logic(base_data: dict, monitoring: dict) -> dict:
+def get_smart_journey_logic(progress: dict, monitoring: dict) -> dict:
     """
-    Applies expert rules to base journey data using real-time monitoring inputs.
-    Injects dynamic tasks and alerts based on environmental conditions.
+    Enhanced Dynamic Journey Engine.
+    Combines stage baseline with real-time sensor triggers.
     """
-    if not monitoring:
-        return base_data
-        
+    day = progress.get("day", 1)
+    base_data = get_static_journey_data(day)
+    
     tasks = list(base_data.get("tasks", []))
     alerts = list(base_data.get("alerts", []))
-    tips = list(base_data.get("tips", [])) # Use tips as base
+    recommendations = list(base_data.get("recommendations", []))
     
-    # 1. Irrigation Logic: soil_moisture < 35 -> irrigation task
-    moisture = monitoring.get("soil_moisture", 50)
-    if moisture < 35:
-        tasks.insert(0, "URGENT: Run irrigation system (Moisture at {}%)".format(moisture))
-        alerts.insert(0, "Critical soil moisture: Crop stress risk is high.")
-        
-    # 2. Heat Stress: temperature > 32 -> heat alert
-    temp = monitoring.get("temperature", 25)
-    if temp > 32:
-        alerts.insert(0, "HEAT ALERT: High temperature ({}°C) may cause wilting.".format(temp))
-        tips.append("Apply organic mulch to protect roots from extreme heat.")
-        
-    # 3. Fertilization: nitrogen < 20 -> fertilization task
-    nitrogen = monitoring.get("nitrogen", 30)
-    if nitrogen < 20:
-        tasks.append("Apply Nitrogen fertilization (Low levels detected: {} mg/kg)".format(nitrogen))
-        tips.append("Test soil again in 7 days to verify Nitrogen uptake.")
-        
-    # 4. Soil Acidity: soil_ph < 6 -> soil correction alert
-    ph = monitoring.get("soil_ph", 7.0)
-    if ph < 6.0:
-        alerts.append("Soil acidity correction needed (pH is dangerously low: {})".format(ph))
-        tasks.append("Apply lime/calcium carbonate to raise soil pH values.")
+    if monitoring:
+        # Rule 1: low moisture → irrigation alert
+        moisture = monitoring.get("soil_moisture", 50)
+        if moisture < 35:
+            alerts.insert(0, f"LOW MOISTURE ALERT: Soil moisture is at {moisture}%.")
+            tasks.insert(0, "Immediate irrigation required to prevent root stress.")
+            recommendations.append("Increase irrigation frequency during dry spells.")
+
+        # Rule 2: high temp → heat stress
+        temp = monitoring.get("temperature", 25)
+        if temp > 32:
+            alerts.insert(0, f"HEAT STRESS ALERT: High temperature ({temp}°C) detected.")
+            tasks.append("Apply heat protection or shading if possible.")
+            recommendations.append("Monitor plant posture for wilting during peak sun.")
+
+        # Rule 3: low nitrogen → fertilization
+        nitrogen = monitoring.get("nitrogen", 30)
+        if nitrogen < 20:
+            alerts.append(f"LOW NITROGEN ALERT: Nutrient levels are below threshold ({nitrogen} mg/kg).")
+            tasks.append("Apply balanced Nitrogen-rich fertilizer (e.g., Urea or NPK).")
+            recommendations.append("Regularly test NPK levels during growth phase.")
+
+    # Guarantee non-empty lists
+    if not tasks: tasks = ["Routine field monitoring"]
+    if not alerts: alerts = ["System status: Stable"]
+    if not recommendations: recommendations = ["Follow standard regional crop protocols"]
 
     return {
-        "stage": base_data.get("stage", "Unknown"),
+        "stage": base_data["stage"],
         "tasks": tasks,
         "alerts": alerts,
-        "tips": tips
+        "recommendations": recommendations
     }

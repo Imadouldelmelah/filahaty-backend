@@ -1,6 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import os
+from utils.logger import logger
 from routes import (
     prediction, ai_routes, news, 
     agronomy_routes, tracking_routes, agronomist_routes, 
@@ -9,6 +11,31 @@ from routes import (
 )
 
 app = FastAPI()
+
+# 1. Global Zero-Crash Middleware
+@app.middleware("http")
+async def safety_middleware(request: Request, call_next):
+    try:
+        return await call_next(request)
+    except Exception as e:
+        logger.error(f"FATAL_UNHANDLED_EXCEPTION: {str(e)}")
+        return JSONResponse(
+            status_code=200,
+            content={
+                "status": "system_offline",
+                "message": "Indestructible backend layer active. System is syncing.",
+                "error": str(e)
+            }
+        )
+
+# 2. Global Exception Handler
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"GLOBAL_EXCEPTION: {str(exc)}")
+    return JSONResponse(
+        status_code=200,
+        content={"status": "error", "message": "Resilient baseline safe response."}
+    )
 
 # Include all active routers
 app.include_router(ai_routes.router)

@@ -11,19 +11,26 @@ class FakeMonitoringService:
         """
         Returns dynamic simulated telemetry data with a unified schema.
         This is the single source of truth for IoT data across the platform.
-        Wrapped in a global try-except to ensure 'Always Available' status.
+        Ensures consistency between endpoints using a time-seeded randomizer.
         """
         try:
+            import time
+            from utils.logger import logger
+            
+            # Use field_id and current minute as seed for 60s consistency across all systems
+            seed_val = hash(field_id) + (int(time.time()) // 60)
+            rng = random.Random(seed_val)
+            
             data = {
                 "field_id": field_id,
-                "temperature": random.randint(20, 35),
-                "humidity": random.randint(40, 80),
-                "soil_moisture": random.randint(30, 70),
-                "soil_ph": round(random.uniform(5.5, 7.5), 1),
-                "nitrogen": random.randint(10, 50),
-                "phosphorus": random.randint(10, 40),
-                "potassium": random.randint(10, 40),
-                "rainfall": round(random.uniform(0.0, 10.0), 1)
+                "temperature": rng.randint(20, 35),
+                "humidity": rng.randint(40, 80),
+                "soil_moisture": rng.randint(30, 70),
+                "soil_ph": round(rng.uniform(5.5, 7.5), 1),
+                "nitrogen": rng.randint(10, 50),
+                "phosphorus": rng.randint(10, 40),
+                "potassium": rng.randint(10, 40),
+                "rainfall": round(rng.uniform(0.0, 10.0), 1)
             }
             
             # Calculate derived health score (Indestructible integration)
@@ -34,7 +41,6 @@ class FakeMonitoringService:
                 data["health_score"] = health_assessment["health_score"]
                 data["health_status"] = health_assessment["status"]
             except Exception as e:
-                from utils.logger import logger
                 logger.error(f"Health score calculation failed: {str(e)}")
                 data["health_score"] = 85
                 data["health_status"] = "Healthy"

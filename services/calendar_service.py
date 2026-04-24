@@ -7,77 +7,87 @@ from services.agronomy_engine import get_crop_plan, get_smart_journey_logic
 class CalendarService:
     def generate_30_day_projection(self, crop_name: str, current_day: int, monitoring_data: dict) -> list:
         """
-        Generates a 30-day task projection starting from current_day.
-        Adjusts tasks dynamically based on biological stage and monitoring alerts.
+        Refined 3-layer Calendar Projection Engine.
+        1. Stage-based (Biological)
+        2. Monitoring-based (Real-time triggers)
+        3. Default fallback (Always Available)
         """
-        plan = get_crop_plan(crop_name)
-        if "error" in plan:
-            return [{"day": current_day + i, "task": "General Maintenance", "priority": "medium"} for i in range(30)]
-            
         projection = []
-        stages = plan.get("stages", [])
         
-        # 1. Capture Monitoring Alerts
-        is_dry = monitoring_data.get("soil_moisture", 50) < 35
-        low_nitrogen = monitoring_data.get("nitrogen", 30) < 20
-        heat_warning = monitoring_data.get("temperature", 25) > 32
-        acidic_soil = monitoring_data.get("soil_ph", 7.0) < 6.0
-        heavy_rain = monitoring_data.get("rainfall", 0) > 8.0
+        # 1. Real-time condition assessment (Layer 2 & 3 Pre-calc)
+        moisture = monitoring_data.get("soil_moisture", 50)
+        nitrogen = monitoring_data.get("nitrogen", 30)
+        temp = monitoring_data.get("temperature", 25)
+        humidity = monitoring_data.get("humidity", 65)
         
         for i in range(30):
             target_day = current_day + i
             
-            # 2. Identify Current Biological Stage
-            stage_data = next(
-                (s for s in stages if self._is_day_in_stage(target_day, s["days"])), 
-                stages[-1] if stages else None
-            )
-            stage_name = stage_data["name"] if stage_data else "Unknown"
+            # --- LAYER 1: Stage-based tasks ---
+            stage = self._get_stage_name(target_day)
+            priority = "low"
             
-            # 3. Apply Stage-Specific Task Logic (Base Overlay)
-            if "seed" in stage_name.lower() or "planting" in stage_name.lower():
-                daily_task = "Irrigation and Soil Preparation"
+            if "planting" in stage.lower():
+                daily_task = "Soil preparation and Initial Irrigation"
                 priority = "high"
-            elif "growth" in stage_name.lower():
-                daily_task = "Fertilization and Monitoring"
+            elif "growth" in stage.lower():
+                daily_task = "Irrigation and Routine Fertilization"
                 priority = "medium"
-            elif "flower" in stage_name.lower():
-                daily_task = "Advanced Pest Control"
+            elif "flower" in stage.lower():
+                daily_task = "Advanced Monitoring and Pest Control"
                 priority = "high"
-            elif "harvest" in stage_name.lower():
-                daily_task = "Strategic Harvesting"
+            elif "harvest" in stage.lower():
+                daily_task = "Harvesting and Post-harvest Storage"
                 priority = "high"
             else:
-                daily_task = "Standard Field Inspection"
+                daily_task = "Standard Field Monitoring"
                 priority = "low"
-            
-            # 4. Merge Real-time Monitoring Alerts (Urgent Overrides)
-            # Sensors have priority over lifecycle in the immediate 48 hours
-            if i < 2:
-                if heavy_rain:
-                    daily_task = "WARNING: Heavy rain forecast: Protect crops and check drainage"
+
+            # --- LAYER 2: Monitoring-based overrides (Immediate 3-day focus) ---
+            if i < 3:
+                if moisture < 35:
+                    daily_task = "URGENT: Irrigation system activation (Dry soil)"
                     priority = "high"
-                elif is_dry:
-                    daily_task = "URGENT: Irrigation system activation (Dry soil detected)"
+                elif nitrogen < 20:
+                    daily_task = "CRITICAL: Targeted Nitrogen fertilization"
                     priority = "high"
-                elif low_nitrogen:
-                    daily_task = "CRITICAL: Fertilization required (Nutrient depletion)"
-                    priority = "high"
-                elif acidic_soil:
-                    daily_task = "ADVISORY: pH correction needed (Acidic soil detected)"
+                elif temp > 32:
+                    daily_task = "ALERT: Apply heat stress protection"
                     priority = "medium"
-                elif heat_warning:
-                    daily_task = "ALERT: Heat stress protection (Extreme temp)"
+                elif humidity > 75:
+                    daily_task = "WARNING: Fungal risk check (High humidity)"
                     priority = "medium"
-            
+
+            # --- LAYER 3: Default fallback (If something went wrong or gap exists) ---
+            if not daily_task or daily_task.strip() == "":
+                daily_task = "General Irrigation and Field Inspection"
+                priority = "medium"
+
             projection.append({
                 "day": target_day,
                 "task": daily_task,
-                "stage": stage_name,
-                "priority": priority
+                "priority": priority,
+                "stage": stage
             })
-            
+
+        # Final Stability Check: Ensure at least 14 days
+        if len(projection) < 14:
+            for i in range(len(projection), 14):
+                projection.append({
+                    "day": current_day + i,
+                    "task": "Standard Field Maintenance",
+                    "priority": "low",
+                    "stage": "Unknown"
+                })
+
         return projection
+
+    def _get_stage_name(self, day: int) -> str:
+        """Determines growth stage based on day count (Indestructible mapping)."""
+        if 1 <= day <= 10: return "Planting"
+        if 11 <= day <= 30: return "Growth"
+        if 31 <= day <= 60: return "Flowering"
+        return "Harvest"
 
     def _is_day_in_stage(self, day: int, day_range: str) -> bool:
         """Helper to check if a day falls within a 'start-end' range string."""

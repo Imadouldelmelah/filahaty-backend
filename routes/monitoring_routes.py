@@ -30,3 +30,17 @@ async def get_monitoring_fake():
             "health_status": "Stable (Backup)",
             "status": "emergency_sync"
         }
+
+@router.get("/health")
+async def get_field_health(field_id: str = "default_field"):
+    """
+    Dedicated health endpoint for the unified agricultural engine.
+    Returns the same consistent data as /fake but framed for analytics.
+    """
+    try:
+        from services.fake_monitoring_service import FakeMonitoringService
+        mon_svc = FakeMonitoringService()
+        return mon_svc.get_fake_monitoring_data(field_id)
+    except Exception as e:
+        logger.error(f"HEALTH_ROUTE_ERROR: {str(e)}")
+        return {"status": "syncing", "health_score": 50, "health_status": "Calculating"}
