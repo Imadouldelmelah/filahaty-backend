@@ -17,86 +17,66 @@ class HybridDecisionController:
         feature_name="HYBRID_DECISION"
     ):
         """
-        Executes a hybrid flow.
-        :param baseline_func: Callable that returns the agronomy baseline (must be synchronous).
-        :param ai_func: Async Callable that attempts AI refinement.
-        :param schema_repair_keys: List of keys to ensure exist in the final JSON.
-        :param protected_keys: List of keys that MUST be preserved from the baseline (AI cannot overwrite).
-        :param feature_name: Name for logging.
+        Executes a hybrid flow. PRIORITIZES AI first.
         """
-        # 1. Step 1: Get Agronomy Baseline (Guaranteed)
+        # 1. Attempt AI Refinement FIRST
         try:
-            base_result = baseline_func()
-            # Ensure base_result is a dict
-            if not isinstance(base_result, dict):
-                 raise ValueError("Baseline must return a dictionary")
-        except Exception as e:
-            logger.error(f"{feature_name}_BASELINE_CRITICAL_FAILURE: {str(e)}")
-            # Ultimate safety net if even the baseline fails
-            base_result = {"status": "error", "message": "Baseline logic failure"}
-
-        # 2. Step 2 & 3: Try AI Refinement
-        try:
-            logger.info(f"{feature_name}: Attempting AI refinement...")
-            response = await asyncio.wait_for(ai_func(), timeout=15)
+            logger.info(f"{feature_name}: Ensuring AI is called first...")
+            # Relaxed timeout for better normal response flow
+            response = await asyncio.wait_for(ai_func(), timeout=20)
             
             if response and len(response) > 0:
-                # If Gemini internally swallowed an error and gave us the offline response, treat it as failure
-                if "Smart offline mode activated" in response:
-                    raise Exception("AI returned offline mode internally")
-                    
                 refined_data = None
-                
-                # 1. Try parse JSON directly
                 try:
                     refined_data = json.loads(response)
                 except json.JSONDecodeError:
-                    # 2. If fail: extract manually
-                    logger.info(f"{feature_name}: Direct JSON parse failed, attempting manual extraction.")
                     start_idx = response.find("{")
                     end_idx = response.rfind("}")
-                    
-                    if start_idx != -1 and end_idx != -1 and start_idx <= end_idx:
+                    if start_idx != -1 and end_idx != -1:
                         json_str = response[start_idx:end_idx + 1]
                         try:
                             refined_data = json.loads(json_str)
                         except json.JSONDecodeError:
-                            logger.error(f"{feature_name}: Manual JSON extraction failed.")
+                            pass
                 
-                # 3. If still fail: return default/baseline JSON (handled by the outer exception block)
-                if not refined_data:
-                    raise Exception("Failed to obtain valid JSON from AI response")
-                
-                # Merge AI refinement
-                if protected_keys:
-                    for p_key in protected_keys:
-                        if p_key in refined_data: del refined_data[p_key]
-                base_result.update(refined_data)
-                base_result["status"] = "ai_optimized"
-                
-                return base_result
+                if refined_data:
+                    # Get baseline only to fill missing fields if needed, but return AI result
+                    try:
+                        base_result = baseline_func()
+                    except:
+                        base_result = {}
+                        
+                    # Merge and protect keys
+                    if protected_keys:
+                        for p_key in protected_keys:
+                            if p_key in refined_data: del refined_data[p_key]
+                    
+                    base_result.update(refined_data)
+                    base_result["status"] = "ai_optimized"
+                    return base_result
+
+            raise Exception("AI response empty or invalid")
 
         except Exception as e:
-            print("AI FAILED:", str(e))
-            logger.warning(f"{feature_name}_AI_SKIPPED: {str(e)}. Using safe baseline.")
-            base_result["status"] = "offline_optimized"
-            base_result["message"] = "Smart offline mode activated"
+            # 2. ONLY fallback if REAL EXCEPTION
+            logger.warning(f"{feature_name}_AI_FAILover: {str(e)}. Falling back to rules.")
+            try:
+                base_result = baseline_func()
+                base_result["status"] = "offline_optimized"
+                base_result["message"] = "Smart offline mode activated"
+            except Exception as inner_e:
+                logger.error(f"{feature_name}_CRITICAL_FAIL: {str(inner_e)}")
+                base_result = {"status": "error", "message": "System logic failure"}
 
-        # 4. Step 4: Final Schema Repair & Validation (Guaranteed No Nulls)
+        # 3. Final Schema Repair
         if schema_repair_keys:
             for key in schema_repair_keys:
-                # Catch both MISSING keys and NULL values
                 if key not in base_result or base_result[key] is None:
-                    logger.info(f"{feature_name}: Repairing missing or null key '{key}'")
                     base_result[key] = "System standard" if key not in ["alternatives", "alerts", "tasks"] else []
         
-        # Final pass: Ensure NO Top-Level null values in the result
         for key, value in base_result.items():
-            if value is None:
-                base_result[key] = ""
-        
-        # Ensure status is always present
-        if "status" not in base_result:
-            base_result["status"] = "fallback"
+            if value is None: base_result[key] = ""
+            
+        if "status" not in base_result: base_result["status"] = "fallback"
 
         return base_result

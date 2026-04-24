@@ -113,6 +113,26 @@ def test_endpoint():
 def ping():
     return {"status": "ok"}
 
+@app.get("/ai-test")
+async def ai_test_endpoint():
+    """
+    High-level AI test endpoint using GeminiService.
+    """
+    from services.gemini_service import GeminiService
+    try:
+        ai_svc = GeminiService()
+        result = await ai_svc.generate("Say 'OpenAI Connection OK' briefly.")
+        return {
+            "test": "ok",
+            "ai": result
+        }
+    except Exception as e:
+        logger.error(f"AI_TEST_ENDPOINT_ERROR: {str(e)}")
+        return {
+            "test": "fail",
+            "error": str(e)
+        }
+
 @app.get("/test-openai")
 def test_openai():
     import os
@@ -124,13 +144,13 @@ def test_openai():
         client = OpenAI()
         
         print("Sending request to OpenAI...")
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": "Say hello"}],
-            max_tokens=20
+        # Note: Using the requested simplified API if supported on this test client
+        response = client.responses.create(
+            model="gpt-4.1-mini",
+            input="Say hello"
         )
         
-        return {"response": response.choices[0].message.content}
+        return {"response": response.output_text}
         
     except Exception as e:
         print(f"OpenAI Test Error: {str(e)}")
