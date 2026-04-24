@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     
     # API Keys (Validated)
     OPENAI_API_KEY: str
+    OPENROUTER_API_KEY: Optional[str] = None
     NEWS_API_KEY: Optional[str] = None
     
     model_config = SettingsConfigDict(

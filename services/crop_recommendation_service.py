@@ -16,29 +16,31 @@ class CropRecommendationService:
         
         # Define the AI refinement step
         async def ai_refinement():
-            from services.agronomy_engine import get_rule_based_crop
-            base_crop = get_rule_based_crop(context)["crop"]
+            from services.deepseek_service import deepseek_svc
+            import asyncio
             
             prompt = f"""
-            Return ONLY JSON:
+            Suggest best crop based on soil, weather and region.
+            Return JSON only:
             {{
-                "crop": "{base_crop}",
-                "confidence": "high",
-                "reason": "Scientific reasoning for this choice...",
-                "alternatives": ["alternative1", "alternative2"]
+                "crop": "string",
+                "confidence": "string",
+                "reason": "string",
+                "alternatives": []
             }}
             
-            Context: {context}
+            Context Data: {json.dumps(context)}
             """
-            return await self._ai.generate(prompt)
+            # Use DeepSeek R1 for specialized agronomic reasoning
+            ai_data = await asyncio.to_thread(deepseek_svc.generate_reasoning, prompt)
+            return ai_data.get("response", "{}")
 
-        # Execute via Controller
+        # Execute via Controller (AI-First)
         return await HybridDecisionController.execute(
             baseline_func=lambda: get_rule_based_crop(context),
             ai_func=ai_refinement,
             schema_repair_keys=["crop", "confidence", "reason", "alternatives"],
-            protected_keys=["crop"],
-            feature_name="CROP_REC"
+            feature_name="CROP_IDEA_AI"
         )
 
 # Export the class for late local instantiation

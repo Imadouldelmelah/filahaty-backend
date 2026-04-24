@@ -23,19 +23,22 @@ async def call_ai(prompt, timeout=5.0):
 @router.post("/chat", response_model=ChatResponse)
 async def chat_with_ai_endpoint(request: ChatRequest):
     """
-    AI works only when endpoint is called.
+    Primary AI Chat using DeepSeek R1 reasoning.
     """
-    from services.gemini_service import GeminiService
-    ai_svc = GeminiService()
+    from services.deepseek_service import deepseek_svc
     try:
-        # Use the new simplified chat method as requested
-        result = await ai_svc.chat(request.message)
-        return ChatResponse(response=result["response"])
+        # 1. Call OpenRouter (DeepSeek R1)
+        # Using to_thread because requests is synchronous and we want to keep FastAPI non-blocking
+        ai_data = await asyncio.to_thread(deepseek_svc.generate_reasoning, request.message)
+        
+        # 2. Return success immediately using the extracted response text
+        return ChatResponse(response=ai_data.get("response", "No response content"))
+        
     except Exception as e:
         logger.error(f"CHAT_ROUTE_ERROR: {str(e)}")
+        # 3. Standard fallback as requested
         return ChatResponse(
-            response="Smart offline mode activated: I can still guide you based on agricultural knowledge.",
-            status="offline_optimized"
+            response="AI temporarily unavailable, using smart fallback"
         )
 
 @router.post("/chat-advanced", response_model=ChatResponse)

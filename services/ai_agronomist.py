@@ -19,24 +19,30 @@ class AIAgronomistService:
         
         # Define the AI refinement step
         async def ai_refinement():
+            from services.deepseek_service import deepseek_svc
+            import asyncio
+            
             prompt = f"""
-            Return ONLY JSON:
+            Generate expert agricultural advice and safety alerts for {crop_name} at the {current_stage} stage.
+            Return JSON only:
             {{
-                "advice": "Expert agricultural advice for {crop_name} at {current_stage}.",
-                "alerts": ["Alert 1", "Alert 2"]
+                "advice": "string",
+                "alerts": ["string"]
             }}
             
-            Context: Crop is {crop_name}. Current stage is {current_stage}.
+            Context: {json.dumps(context)}
             """
-            return await self._ai.generate(prompt)
+            # AI ONLY generates advice and alerts
+            ai_data = await asyncio.to_thread(deepseek_svc.generate_reasoning, prompt)
+            return ai_data.get("response", "{}")
 
-        # Execute via Controller
+        # Execute via Controller (AI-First)
         return await HybridDecisionController.execute(
             baseline_func=lambda: get_rule_based_advice(crop_name, current_stage),
             ai_func=ai_refinement,
             schema_repair_keys=["stage", "tasks", "advice", "alerts"],
-            protected_keys=["tasks", "stage"],
-            feature_name="AI_ADVICE"
+            protected_keys=["stage", "tasks"], # Protect rule-based integrity
+            feature_name="JOURNEY_ADVICE_AI"
         )
 
     async def generate_advanced_chat(self, context: dict, user_message: str) -> str:

@@ -116,22 +116,35 @@ def ping():
 @app.get("/ai-test")
 async def ai_test_endpoint():
     """
-    High-level AI test endpoint using GeminiService.
+    Live OpenRouter connectivity test.
     """
-    from services.gemini_service import GeminiService
+    from services.deepseek_service import deepseek_svc
     try:
-        ai_svc = GeminiService()
-        result = await ai_svc.generate("Say 'OpenAI Connection OK' briefly.")
+        # 1. Call OpenRouter with "hello"
+        result = deepseek_svc.generate_reasoning("hello")
+        
+        # 2. Return result
         return {
-            "test": "ok",
-            "ai": result
+            "status": "ok",
+            "ai_response": result
         }
     except Exception as e:
-        logger.error(f"AI_TEST_ENDPOINT_ERROR: {str(e)}")
         return {
-            "test": "fail",
+            "status": "fail",
             "error": str(e)
         }
+
+@app.get("/test-deepseek")
+def test_deepseek():
+    """
+    Direct test for OpenRouter DeepSeek R1 integration.
+    """
+    try:
+        from services.deepseek_service import deepseek_svc
+        result = deepseek_svc.generate_reasoning("What are the best crops for dry soil?")
+        return {"response": result}
+    except Exception as e:
+        return {"error": str(e)}
 
 @app.get("/test-openai")
 def test_openai():
