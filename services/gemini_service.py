@@ -17,7 +17,9 @@ class GeminiService:
         print("API KEY LOADED:", bool(api_key))
         
         if not api_key:
-             raise Exception("Missing OpenAI API key")
+             logger.warning("GEMINI_SVC_INIT: Missing OpenAI API key. AI features will be disabled.")
+             self.client = None
+             return
         
         try:
             from openai import OpenAI

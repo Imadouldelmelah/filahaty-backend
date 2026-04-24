@@ -52,5 +52,53 @@
         "latitude": 36.75,
         "longitude": 3.05,
         "history": []
+    },
+    "ef2557e7-c097-464d-bfb7-df27cae40dd6": {
+        "journey_id": "ef2557e7-c097-464d-bfb7-df27cae40dd6",
+        "crop_name": "tomato",
+        "start_date": "2026-03-11",
+        "latitude": null,
+        "longitude": null,
+        "history": []
+    },
+    "ec6fe725-29c1-4887-9755-af7529bc279e": {
+        "journey_id": "ec6fe725-29c1-4887-9755-af7529bc279e",
+        "crop_name": "tomato",
+        "start_date": "2026-04-01",
+        "latitude": null,
+        "longitude": null,
+        "history": []
+    },
+    "e555249d-4c7b-4c4c-bb07-65438c27f630": {
+        "journey_id": "e555249d-4c7b-4c4c-bb07-65438c27f630",
+        "crop_name": "tomato",
+        "start_date": "2026-04-01",
+        "latitude": null,
+        "longitude": null,
+        "history": []
+    },
+    "948a8d47-9d40-4043-ab0f-4f45682a6d38": {
+        "journey_id": "948a8d47-9d40-4043-ab0f-4f45682a6d38",
+        "crop_name": "tomato",
+        "start_date": "2026-04-01",
+        "latitude": null,
+        "longitude": null,
+        "history": []
+    },
+    "c036495f-3806-454d-86bd-b97c03662935": {
+        "journey_id": "c036495f-3806-454d-86bd-b97c03662935",
+        "crop_name": "tomato",
+        "start_date": "2026-04-01",
+        "latitude": null,
+        "longitude": null,
+        "history": []
+    },
+    "02ce413c-05ae-4777-9a5e-0743d5735bb1": {
+        "journey_id": "02ce413c-05ae-4777-9a5e-0743d5735bb1",
+        "crop_name": "tomato",
+        "start_date": "2026-04-01",
+        "latitude": null,
+        "longitude": null,
+        "history": []
     }
 }

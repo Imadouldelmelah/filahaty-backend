@@ -1,13 +1,31 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 import os
-from routes.ai_routes import router as ai_router
+from routes import (
+    prediction, ai_routes, news, 
+    agronomy_routes, tracking_routes, agronomist_routes, 
+    weather_routes, field_routes, marketplace_routes, unified_ai_routes,
+    monitoring_routes
+)
 
 app = FastAPI()
-app.include_router(ai_router)
+
+# Include all active routers
+app.include_router(ai_routes.router)
+app.include_router(monitoring_routes.router)
+app.include_router(prediction.router)
+app.include_router(news.router)
+app.include_router(agronomy_routes.router)
+app.include_router(tracking_routes.router)
+app.include_router(agronomist_routes.router)
+app.include_router(weather_routes.router)
+app.include_router(field_routes.router)
+app.include_router(marketplace_routes.router)
+app.include_router(unified_ai_routes.router)
 
 @app.get("/")
 def root():
-    return {"status": "ok"}
+    return {"status": "ok", "message": "Filahaty Backend Active"}
 
 if __name__ == "__main__":
     import uvicorn

@@ -72,14 +72,18 @@ class TrackingService:
         delta = today - start_date
         current_day = max(1, delta.days + 1)
 
-        # Get stage from agronomy engine
-        stage = self._calculate_stage(crop_name, current_day)
+        # Get stage and static advice from engine (Offline First)
+        from services.agronomy_engine import get_static_journey_data
+        static_data = get_static_journey_data(current_day)
         
         return {
             "journey_id": journey_id,
             "crop": crop_name,
             "day": current_day,
-            "stage": stage,
+            "stage": static_data["stage"],
+            "tasks": static_data["tasks"],
+            "alerts": static_data["alerts"],
+            "tips": static_data["tips"],
             "start_date": journey["start_date"],
             "latitude": journey.get("latitude"),
             "longitude": journey.get("longitude"),

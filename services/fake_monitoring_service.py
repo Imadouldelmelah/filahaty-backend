@@ -16,9 +16,9 @@ class FakeMonitoringService:
         try:
             data = {
                 "field_id": field_id,
-                "soil_moisture": random.randint(50, 80),
-                "temperature": random.randint(18, 30),
-                "humidity": random.randint(50, 90),
+                "soil_moisture": random.randint(20, 80), # Allows for < 35 triggers
+                "temperature": random.randint(15, 40),   # Allows for > 32 triggers
+                "humidity": random.randint(30, 90),
                 "ph": round(random.uniform(5.5, 7.5), 1),
                 "nitrogen": random.randint(0, 140),
                 "phosphorus": random.randint(0, 120),

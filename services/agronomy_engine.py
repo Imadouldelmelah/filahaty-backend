@@ -226,3 +226,81 @@ def get_rule_based_advice(crop_name: str, stage_name: str) -> dict:
         "alerts": [],
         "status": "offline_optimized"
     }
+
+def get_static_journey_data(day: int) -> dict:
+    """
+    Returns static, indestructible farming journey data based on fixed day ranges.
+    Guaranteed to work offline without AI dependencies.
+    """
+    if 1 <= day <= 10:
+        return {
+            "stage": "Planting",
+            "tasks": [
+                "Prepare soil with organic compost",
+                "Sow seeds at correct depth",
+                "Light misting for moisture",
+                "Verify soil temperature (20-25°C)"
+            ],
+            "alerts": [
+                "Watch for temperature drops",
+                "Protect from heavy rain"
+            ],
+            "tips": [
+                "Use certified high-quality seeds for better yield",
+                "Plant in early morning or late afternoon"
+            ]
+        }
+    elif 11 <= day <= 30:
+        return {
+            "stage": "Growth",
+            "tasks": [
+                "Apply leaf-friendly Nitrogen fertilizer",
+                "Remove competing weeds",
+                "Transition to deep root irrigation",
+                "Support plants with stakes if needed"
+            ],
+            "alerts": [
+                "Monitor for early pest signs",
+                "Check for yellowing leaves"
+            ],
+            "tips": [
+                "Ensure at least 6-8 hours of direct sunlight",
+                "Avoid over-watering to prevent root rot"
+            ]
+        }
+    elif 31 <= day <= 60:
+        return {
+            "stage": "Flowering",
+            "tasks": [
+                "Switch to Potassium-rich fertilizer",
+                "Ensure steady water supply (avoid stress)",
+                "Monitor pollination activity",
+                "Remove early diseased foliage"
+            ],
+            "alerts": [
+                "Critical stage: Water stress causes blossom drop",
+                "Check for insects on blossoms"
+            ],
+            "tips": [
+                "Avoid high-nitrogen fertilizer as it delays flowering",
+                "Be gentle with plants during work"
+            ]
+        }
+    else: # day 61+
+        return {
+            "stage": "Harvest",
+            "tasks": [
+                "Test ripeness/maturity level",
+                "Harvest using clean, sharp tools",
+                "Sort produce by size and quality",
+                "Prepare storage in cool, dry area"
+            ],
+            "alerts": [
+                "Over-ripening will reduce shelf life",
+                "Handle fruit gently to avoid bruising"
+            ],
+            "tips": [
+                "Harvest in the morning for best freshness",
+                "Keep harvested crops out of direct sun"
+            ]
+        }

@@ -61,34 +61,65 @@ async def get_journey_guidance_endpoint(journey_id: str):
     if "error" in progress:
         raise HTTPException(status_code=404, detail=progress["error"])
     
-    # Fetch real-time weather based on coordinates
-    weather_data = None
-    if progress.get("latitude") and progress.get("longitude"):
-        from services.weather_service import WeatherService
-        weather_svc = WeatherService()
-        weather_data = weather_svc.get_weather(progress["latitude"], progress["longitude"])
-    
-    # Fetch real-time monitoring data for the field
+    # 1. Fetch real-time monitoring data (Smart Agriculture Layer)
     from services.fake_monitoring_service import FakeMonitoringService
     monitoring_svc = FakeMonitoringService()
     monitoring_data = monitoring_svc.get_fake_monitoring_data(journey_id)
     
-    # context for AI
+    # 2. Hybrid Guidance (AI with Rule-based fallback)
+    from services.ai_agronomist import AIAgronomistService
+    agronomist_svc = AIAgronomistService()
+    
     context = {
         "crop_name": progress["crop"],
         "current_stage": progress["stage"],
-        "journey_id": journey_id,
-        "weather": "Dynamic" if weather_data else "Sunny", 
-        "weather_data": weather_data,
+        "day": progress["day"],
         "monitoring_data": monitoring_data,
-        "soil": "Sandy",
-        "field_size": "Standard"
+        "history": progress.get("history", [])
     }
     
-    from services.ai_agronomist import AIAgronomistService
-    agronomist_svc = AIAgronomistService()
-    advice = await agronomist_svc.generate_advice(context)
-    return {
-        "progress": progress,
-        "ai_advice": advice
-    }
+    # 3. Dynamic Smart Alerts (Rule-based layer - applied to baseline)
+    dynamic_alerts = []
+    if monitoring_data.get("soil_moisture", 100) < 35:
+        dynamic_alerts.append("Irrigation needed")
+    if monitoring_data.get("temperature", 0) > 32:
+        dynamic_alerts.append("Heat stress risk")
+        
+    # Merge rules into progress for AI to refine
+    progress["alerts"] = progress["alerts"] + dynamic_alerts
+    
+    try:
+        # Get hybrid advice (AI call will happen inside)
+        advice_data = await agronomist_svc.generate_advice(context)
+        
+        return {
+            "status": advice_data.get("status", "hybrid"),
+            "journey_id": journey_id,
+            "day": progress["day"],
+            "stage": progress["stage"],
+            "tasks": progress["tasks"], # Protected by controller
+            "alerts": list(set(progress["alerts"] + advice_data.get("alerts", []))), # Deduplicate
+            "tips": advice_data.get("tips", progress["tips"]),
+            "monitoring": {
+                "soil_moisture": monitoring_data.get("soil_moisture"),
+                "temperature": monitoring_data.get("temperature"),
+                "humidity": monitoring_data.get("humidity")
+            }
+        }
+    except Exception as e:
+        logger.error(f"JOURNEY_AI_EXCEPTION: {str(e)}")
+        # Ultimate fallback
+        return {
+            "status": "rule_based_fallback",
+            "journey_id": journey_id,
+            "day": progress["day"],
+            "stage": progress["stage"],
+            "tasks": progress["tasks"],
+            "alerts": progress["alerts"],
+            "tips": progress["tips"],
+            "monitoring": {
+                "soil_moisture": monitoring_data.get("soil_moisture"),
+                "temperature": monitoring_data.get("temperature"),
+                "humidity": monitoring_data.get("humidity")
+            }
+        }
