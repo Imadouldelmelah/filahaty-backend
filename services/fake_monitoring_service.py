@@ -36,14 +36,23 @@ class FakeMonitoringService:
             # Calculate derived health score (Indestructible integration)
             try:
                 from services.health_score_service import FieldHealthScoreService
+                from services.alert_service import AlertService
+                
                 health_svc = FieldHealthScoreService()
+                alert_svc = AlertService()
+                
                 health_assessment = health_svc.calculate_health_score(data)
                 data["health_score"] = health_assessment["health_score"]
                 data["health_status"] = health_assessment["status"]
+                
+                # Generate dynamic alerts
+                data["alerts"] = alert_svc.generate_alerts(data)
+                
             except Exception as e:
-                logger.error(f"Health score calculation failed: {str(e)}")
+                logger.error(f"Health score or alert calculation failed: {str(e)}")
                 data["health_score"] = 85
                 data["health_status"] = "Healthy"
+                data["alerts"] = []
             
             return data
             
@@ -63,7 +72,8 @@ class FakeMonitoringService:
                 "rainfall": 50.0,
                 "health_score": 80,
                 "health_status": "Stable",
-                "status": "fallback"
+                "status": "fallback",
+                "alerts": []
             }
 
 # Class exported for on-demand initialization

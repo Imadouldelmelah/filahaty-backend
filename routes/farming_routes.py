@@ -37,3 +37,24 @@ async def get_general_farming_calendar(
         })
         
     return formatted_calendar
+
+@router.get("/notifications")
+async def get_farming_notifications():
+    """
+    Unified notification center endpoint.
+    Returns the history of agricultural alerts with a count summary.
+    """
+    try:
+        from services.alert_service import AlertService
+        alert_svc = AlertService()
+        history = alert_svc.get_all_notifications()
+        
+        return {
+            "count": len(history) if history else 0,
+            "notifications": history if history else []
+        }
+    except Exception:
+        return {
+            "count": 0,
+            "notifications": []
+        }

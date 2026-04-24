@@ -44,3 +44,16 @@ async def get_field_health(field_id: str = "default_field"):
     except Exception as e:
         logger.error(f"HEALTH_ROUTE_ERROR: {str(e)}")
         return {"status": "syncing", "health_score": 50, "health_status": "Calculating"}
+
+@router.get("/notifications")
+async def get_notifications():
+    """
+    Returns the history of agricultural alerts stored in the system.
+    """
+    try:
+        from services.alert_service import AlertService
+        alert_svc = AlertService()
+        return alert_svc.get_all_notifications()
+    except Exception as e:
+        logger.error(f"NOTIFICATION_ROUTE_ERROR: {str(e)}")
+        return []
