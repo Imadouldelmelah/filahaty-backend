@@ -7,29 +7,16 @@ router = APIRouter(prefix="/monitoring", tags=["Monitoring"])
 @router.get("/fake")
 async def get_monitoring_fake():
     """
-    Returns dynamic simulated telemetry as requested by the user.
-    Simulates real IoT data reliably with specific ranges.
+    Unified entry point for simulated telemetry.
+    Consumes the centralized FakeMonitoringService for consistent data flow.
     """
     try:
-        # Return full agricultural dataset requested
-        data = {
-            "temperature": random.randint(20, 35),
-            "humidity": random.randint(40, 80),
-            "soil_moisture": random.randint(30, 70),
-            "soil_ph": round(random.uniform(5.5, 7.5), 1),
-            "nitrogen": random.randint(10, 50),
-            "phosphorus": random.randint(10, 40),
-            "potassium": random.randint(10, 40),
-            "rainfall": random.randint(0, 10),
-            "status": "healthy"
-        }
-        
-        # Log generated data for observability
-        logger.info(f"MONITOR_DATA_FULL: {data}")
-        return data
+        from services.fake_monitoring_service import FakeMonitoringService
+        mon_svc = FakeMonitoringService()
+        return mon_svc.get_fake_monitoring_data()
     except Exception as e:
-        logger.error(f"MONITOR_ERROR: {str(e)}")
-        # Stable full-schema fallback to ensure 200 response with no missing values
+        logger.error(f"MONITOR_ROUTE_ERROR: {str(e)}")
+        # Ultimate indestructible baseline
         return {
             "temperature": 25,
             "humidity": 60,
@@ -38,6 +25,8 @@ async def get_monitoring_fake():
             "nitrogen": 30,
             "phosphorus": 25,
             "potassium": 25,
-            "rainfall": 2,
-            "status": "system_fallback"
+            "rainfall": 2.0,
+            "health_score": 85,
+            "health_status": "Stable (Backup)",
+            "status": "emergency_sync"
         }

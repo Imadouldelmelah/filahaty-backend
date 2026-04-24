@@ -5,7 +5,7 @@ from routes import (
     prediction, ai_routes, news, 
     agronomy_routes, tracking_routes, agronomist_routes, 
     weather_routes, field_routes, marketplace_routes, unified_ai_routes,
-    monitoring_routes
+    monitoring_routes, farming_routes
 )
 
 app = FastAPI()
@@ -22,6 +22,7 @@ app.include_router(weather_routes.router)
 app.include_router(field_routes.router)
 app.include_router(marketplace_routes.router)
 app.include_router(unified_ai_routes.router)
+app.include_router(farming_routes.router)
 
 @app.get("/")
 def root():

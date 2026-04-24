@@ -16,14 +16,14 @@ class FakeMonitoringService:
         try:
             data = {
                 "field_id": field_id,
-                "soil_moisture": random.randint(20, 80), # Allows for < 35 triggers
-                "temperature": random.randint(15, 40),   # Allows for > 32 triggers
-                "humidity": random.randint(30, 90),
+                "temperature": random.randint(20, 35),
+                "humidity": random.randint(40, 80),
+                "soil_moisture": random.randint(30, 70),
                 "soil_ph": round(random.uniform(5.5, 7.5), 1),
-                "nitrogen": random.randint(0, 140),
-                "phosphorus": random.randint(0, 120),
-                "potassium": random.randint(0, 120),
-                "rainfall": round(random.uniform(0.0, 400.0), 1)
+                "nitrogen": random.randint(10, 50),
+                "phosphorus": random.randint(10, 40),
+                "potassium": random.randint(10, 40),
+                "rainfall": round(random.uniform(0.0, 10.0), 1)
             }
             
             # Calculate derived health score (Indestructible integration)
@@ -31,7 +31,7 @@ class FakeMonitoringService:
                 from services.health_score_service import FieldHealthScoreService
                 health_svc = FieldHealthScoreService()
                 health_assessment = health_svc.calculate_health_score(data)
-                data["health_score"] = health_assessment["score"]
+                data["health_score"] = health_assessment["health_score"]
                 data["health_status"] = health_assessment["status"]
             except Exception as e:
                 from utils.logger import logger

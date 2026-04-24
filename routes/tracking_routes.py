@@ -93,7 +93,7 @@ async def get_journey_guidance_endpoint(journey_id: str):
             "stage": progress["stage"],
             "tasks": list(set(smart_guidance["tasks"] + advice_data.get("tasks", []))),
             "alerts": list(set(smart_guidance["alerts"] + advice_data.get("alerts", []))),
-            "recommendations": list(set(smart_guidance["recommendations"] + advice_data.get("tips", []))),
+            "tips": list(set(smart_guidance["tips"] + advice_data.get("tips", []))),
             "monitoring": {
                 "soil_moisture": monitoring_data.get("soil_moisture"),
                 "temperature": monitoring_data.get("temperature"),
@@ -112,7 +112,7 @@ async def get_journey_guidance_endpoint(journey_id: str):
             "stage": progress.get("stage"),
             "tasks": smart_guidance["tasks"],
             "alerts": smart_guidance["alerts"],
-            "recommendations": smart_guidance["recommendations"],
+            "tips": smart_guidance["tips"],
             "monitoring": {
                 "soil_moisture": monitoring_data.get("soil_moisture"),
                 "temperature": monitoring_data.get("temperature"),
