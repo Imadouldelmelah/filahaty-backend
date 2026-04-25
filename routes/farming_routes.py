@@ -8,7 +8,8 @@ router = APIRouter(prefix="", tags=["Farming Operations"])
 @router.get("/calendar")
 async def get_general_farming_calendar(
     crop: str = Query("Tomato", description="Crop type for calendar generation"),
-    day: int = Query(1, description="Current day in lifecycle")
+    day: int = Query(1, description="Current day in lifecycle"),
+    lang: str = Query("en", description="Target language")
 ):
     """
     Generates a 30-day dynamic farming calendar.
@@ -24,7 +25,8 @@ async def get_general_farming_calendar(
     projection = calendar_svc.generate_30_day_projection(
         crop_name=crop,
         current_day=day,
-        monitoring_data=monitoring_data
+        monitoring_data=monitoring_data,
+        lang=lang
     )
     
     # 3. Final formatting and safety assurance
@@ -39,7 +41,9 @@ async def get_general_farming_calendar(
     return formatted_calendar
 
 @router.get("/notifications")
-async def get_farming_notifications():
+async def get_farming_notifications(
+    lang: str = Query("en", description="Target language")
+):
     """
     Unified notification center endpoint.
     Returns the history of agricultural alerts with a count summary.
@@ -47,7 +51,7 @@ async def get_farming_notifications():
     try:
         from services.alert_service import AlertService
         alert_svc = AlertService()
-        history = alert_svc.get_all_notifications()
+        history = alert_svc.get_all_notifications(lang=lang)
         
         return {
             "count": len(history) if history else 0,

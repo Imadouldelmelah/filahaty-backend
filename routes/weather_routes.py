@@ -6,7 +6,8 @@ router = APIRouter(prefix="/weather", tags=["Weather"])
 @router.get("/")
 async def get_weather_endpoint(
     lat: float = Query(..., description="Latitude of the location"),
-    lon: float = Query(..., description="Longitude of the location")
+    lon: float = Query(..., description="Longitude of the location"),
+    lang: str = Query("en", description="Language code")
 ):
     """
     Exposes real-time weather data for a specific location.
@@ -35,7 +36,8 @@ async def get_weather_endpoint(
 @router.get("/insights")
 async def get_weather_insights_endpoint(
     lat: float = Query(..., description="Latitude"),
-    lon: float = Query(..., description="Longitude")
+    lon: float = Query(..., description="Longitude"),
+    lang: str = Query("en", description="Language code")
 ):
     """
     Returns weather data combined with agricultural decision logic.
@@ -53,7 +55,7 @@ async def get_weather_insights_endpoint(
         
         from services.weather_intelligence import WeatherIntelligenceService
         weather_intel = WeatherIntelligenceService()
-        insights = weather_intel.analyze_weather(weather_data, monitoring_data)
+        insights = weather_intel.analyze_weather(weather_data, monitoring_data, lang=lang)
         
         return {
             "weather": weather_data,
@@ -61,9 +63,12 @@ async def get_weather_insights_endpoint(
         }
     except Exception as e:
         logger.error(f"Weather Insights Error: {str(e)}")
+        from services.weather_intelligence import WeatherIntelligenceService
+        weather_intel = WeatherIntelligenceService()
+        fallback_msg = weather_intel._t("weather_incomplete", lang) if "Weather" in str(e) else "Weather analysis syncing..."
         return {
             "weather": {"temperature": 25.0, "humidity": 60, "condition": "Standard"},
-            "insights": "Weather analysis is currently using offline baselines. Maintain standard crop care.",
+            "insights": fallback_msg,
             "status": "offline_optimized"
         }
 
@@ -72,7 +77,8 @@ async def get_weather_alerts_endpoint(
     lat: float = Query(..., description="Latitude"),
     lon: float = Query(..., description="Longitude"),
     crop: str = Query("", description="Crop name"),
-    stage: str = Query("", description="Growth stage")
+    stage: str = Query("", description="Growth stage"),
+    lang: str = Query("en", description="Language code")
 ):
     """
     Returns specific, crop-aware farming alerts based on weather and stage.
@@ -90,11 +96,13 @@ async def get_weather_alerts_endpoint(
         
         from services.weather_intelligence import WeatherIntelligenceService
         weather_intel = WeatherIntelligenceService()
-        alerts = weather_intel.generate_smart_alerts(weather_data, crop, stage, monitoring_data)
+        alerts = weather_intel.generate_smart_alerts(weather_data, crop, stage, monitoring_data, lang=lang)
         return {"alerts": alerts}
     except Exception as e:
         logger.error(f"Weather Alerts Error: {str(e)}")
+        from services.weather_intelligence import WeatherIntelligenceService
+        weather_intel = WeatherIntelligenceService()
         return {
-            "alerts": ["Weather system syncing: No critical alerts currently active."],
+            "alerts": [weather_intel._t("syncing_alerts", lang)],
             "status": "offline_optimized"
         }

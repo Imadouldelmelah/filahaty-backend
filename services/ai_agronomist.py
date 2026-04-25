@@ -16,6 +16,7 @@ class AIAgronomistService:
         
         crop_name = context.get('crop_name', '')
         current_stage = context.get('current_stage', '')
+        lang = context.get('lang', 'en')
         
         # Define the AI refinement step
         async def ai_refinement():
@@ -23,6 +24,8 @@ class AIAgronomistService:
             import asyncio
             
             prompt = f"""
+            IMPORTANT: RESPONSE LANGUAGE MUST BE {lang.upper()}.
+            
             Generate expert agricultural advice and safety alerts for {crop_name} at the {current_stage} stage.
             Return JSON only:
             {{
@@ -55,7 +58,7 @@ class AIAgronomistService:
         current_stage = context.get('current_stage', 'Unknown')
         weather_data = context.get('weather_data')
         monitoring_data = context.get('monitoring_data')
-        soil = context.get('soil', 'Unknown')
+        lang = context.get('lang', 'en')
         
         system_prompt = f"""
         Role: Filahaty AI, expert Algerian agronomist. 
@@ -63,6 +66,7 @@ class AIAgronomistService:
         Weather: {weather_data if weather_data else 'None'}.
         Sensors: {monitoring_data if monitoring_data else 'None'}.
         Instruction: Answer concisely, step-by-step, no JSON/markdown blocks.
+        RESPONSE LANGUAGE: {lang.upper()}.
         """
         
         # Truncate user message to 200 chars to save tokens
@@ -82,5 +86,6 @@ class AIAgronomistService:
             return raw_response.strip()
         except Exception as e:
             logger.warning(f"Advanced_Chat_AI_SKIPPED: {str(e)}. Using safe baseline.")
-            return "Smart offline mode activated: I can still guide you based on agricultural knowledge."
+            from services.agronomy_engine import _t
+            return _t("advanced_chat_offline_msg", lang)
 # Export the class for lazy instantiation inside routes

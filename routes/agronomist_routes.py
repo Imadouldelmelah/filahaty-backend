@@ -13,6 +13,7 @@ class AgronomistContext(BaseModel):
     field_size: str
     field_id: str = "default_field"
     monitoring_data: dict = None
+    lang: str = "en"
 
 class AgronomistResponse(BaseModel):
     advice: str
@@ -41,7 +42,9 @@ async def get_agronomist_advice_endpoint(context: AgronomistContext):
     except Exception as e:
         logger.error(f"Endpoint Error: {str(e)}")
         # Guaranteed structured JSON fallback
+        from services.agronomy_engine import _t
+        lang = context.lang if hasattr(context, "lang") else "en"
         return AgronomistResponse(
-            advice="Our AI agronomist is currently optimizing, but our expert baselines recommend maintaining current irrigation and monitoring for visual pest signs.",
-            actions=["Check soil moisture", "Verify irrigation alignment", "Monitor lower leaves"]
+            advice=_t("baseline_advice", lang),
+            actions=_t("baseline_tasks", lang)
         )

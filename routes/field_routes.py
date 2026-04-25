@@ -5,7 +5,7 @@ from utils.logger import logger
 router = APIRouter(prefix="/field", tags=["Field Analytics"])
 
 @router.get("/decision")
-async def get_field_decision(field_id: str):
+async def get_field_decision(field_id: str, lang: str = "en"):
     """
     Combines tracking, weather, and real-time monitoring data to produce 
     a highly intelligent AI decision for the field.
@@ -35,7 +35,8 @@ async def get_field_decision(field_id: str):
             "crop_name": crop,
             "current_stage": stage,
             "weather_data": weather_data,
-            "monitoring_data": monitoring_data
+            "monitoring_data": monitoring_data,
+            "lang": lang
         }
 
         from services.ai_decision_engine import AIDecisionEngine

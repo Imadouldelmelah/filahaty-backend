@@ -11,10 +11,21 @@ async def get_agronomy_plan_endpoint(request: AgronomyRequest):
     Returns a structured crop plan for the requested crop.
     """
     crop = request.crop
-    logger.info(f"Agronomy Request: Fetching plan for {crop}")
+    lang = request.lang if hasattr(request, "lang") else "en"
+    logger.info(f"Agronomy Request: Fetching plan for {crop} in {lang}")
     
-    from services.agronomy_engine import get_crop_plan
-    plan = get_crop_plan(crop)
+    try:
+        from services.agronomy_engine import get_crop_plan
+        plan = get_crop_plan(crop, lang=lang)
+    except Exception as e:
+        logger.error(f"Endpoint Error: {str(e)}")
+        # Guaranteed structured JSON fallback
+        from services.agronomy_engine import _t
+        from models.agronomy_models import AgronomistResponse
+        return AgronomistResponse(
+            advice=_t("baseline_advice", lang),
+            actions=_t("baseline_tasks", lang)
+        )
     
     # Check if the engine returned an error
     if "error" in plan:
