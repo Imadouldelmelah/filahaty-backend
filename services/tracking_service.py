@@ -24,7 +24,8 @@ class TrackingService:
         with open(DATA_FILE, "w") as f:
             json.dump(journeys, f, indent=4)
 
-    def start_journey(self, crop_name: str, start_date: str, lat: float = None, lon: float = None):
+    def start_journey(self, crop_name: str, start_date: str, lat: float = None, lon: float = None,
+                       user_id: str = None, land_id: int = None):
         """
         Starts a new farming journey.
         Args:
@@ -32,6 +33,8 @@ class TrackingService:
             start_date (str): Start date in YYYY-MM-DD format.
             lat (float): Latitude of the farm.
             lon (float): Longitude of the farm.
+            user_id (str): Identifier of the user who owns this journey.  FK → User
+            land_id (int): Room DB land id this journey is associated with. FK → Land
         Returns:
             str: Unique journey_id.
         """
@@ -46,6 +49,8 @@ class TrackingService:
 
         journeys[journey_id] = {
             "journey_id": journey_id,
+            "user_id": user_id,           # FK → User (owner of this journey)
+            "land_id": land_id,           # FK → Land (field being cultivated)
             "crop_name": crop_name.lower(),
             "start_date": start_date,
             "latitude": lat,
@@ -78,12 +83,14 @@ class TrackingService:
         
         return {
             "journey_id": journey_id,
+            "user_id": journey.get("user_id"),
+            "land_id": journey.get("land_id"),
             "crop": crop_name,
             "day": current_day,
             "stage": static_data["stage"],
             "tasks": static_data["tasks"],
             "alerts": static_data["alerts"],
-            "tips": static_data["tips"],
+            "tips": static_data.get("tips", []),
             "start_date": journey["start_date"],
             "latitude": journey.get("latitude"),
             "longitude": journey.get("longitude"),
