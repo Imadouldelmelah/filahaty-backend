@@ -56,6 +56,10 @@ app.include_router(farmer_routes.router)
 def root():
     return {"status": "ok", "message": "Filahaty Backend Active"}
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 10000))
